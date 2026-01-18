@@ -22,7 +22,7 @@ import FixedCostForm from '@/components/finanzen/FixedCostForm';
 import VariableCostForm from '@/components/finanzen/VariableCostForm';
 import DebtForm from '@/components/finanzen/DebtForm';
 import AssetsForm from '@/components/finanzen/AssetsForm';
-import { IncomeSource, FixedCost, VariableCostEstimate, Debt, Assets } from '@/lib/types';
+import { IncomeSource, FixedCost, VariableCostEstimate, Debt, Assets, QuarterlyBonusStatus } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
 type TabType = 'uebersicht' | 'einnahmen' | 'fixkosten' | 'variable' | 'schulden' | 'vermoegen';
@@ -275,52 +275,98 @@ export default function FinanzenPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {incomeSources.map((source) => (
-                  <div
-                    key={source.id}
-                    className={`flex items-center justify-between p-4 rounded-lg border ${
-                      source.isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-slate-900">{source.name}</p>
-                        {!source.isActive && (
-                          <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded">
-                            Inaktiv
-                          </span>
-                        )}
+                {incomeSources.map((source) => {
+                  const handleQuarterToggle = async (quarter: keyof QuarterlyBonusStatus) => {
+                    const newQuarters = {
+                      ...source.confirmedQuarters || { Q1: false, Q2: false, Q3: false, Q4: false },
+                      [quarter]: !source.confirmedQuarters?.[quarter],
+                    };
+                    await updateIncomeSource({
+                      ...source,
+                      confirmedQuarters: newQuarters,
+                    });
+                  };
+
+                  return (
+                    <div
+                      key={source.id}
+                      className={`p-4 rounded-lg border ${
+                        source.isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-slate-900">{source.name}</p>
+                            {!source.isActive && (
+                              <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded">
+                                Inaktiv
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-500">
+                            {source.frequency === 'jaehrlich'
+                              ? 'Jährlich'
+                              : source.frequency === 'quartalsbonus'
+                              ? 'Quartalsbonus'
+                              : 'Monatlich'}
+                            {source.note && ` - ${source.note}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <p className="text-lg font-semibold text-emerald-600">
+                            {formatCurrency(source.amount)}
+                            {source.frequency === 'quartalsbonus' && <span className="text-sm text-slate-400">/Q</span>}
+                          </p>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleEditClick(source)}
+                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteIncomeSource(source.id)}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm text-slate-500">
-                        {source.frequency === 'jaehrlich'
-                          ? 'Jährlich'
-                          : source.frequency === 'quartalsbonus'
-                          ? `Quartalsbonus (${source.confirmedQuarters ? Object.values(source.confirmedQuarters).filter(Boolean).length : 0}/4 bestätigt)`
-                          : 'Monatlich'}
-                        {source.note && ` - ${source.note}`}
-                      </p>
+
+                      {/* Quartalsbonus Toggle Buttons */}
+                      {source.frequency === 'quartalsbonus' && (
+                        <div className="mt-3 pt-3 border-t border-slate-100">
+                          <p className="text-xs text-slate-500 mb-2">Klicke auf ein Quartal um es als erhalten zu markieren:</p>
+                          <div className="flex gap-2">
+                            {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map((quarter) => {
+                              const isConfirmed = source.confirmedQuarters?.[quarter] || false;
+                              return (
+                                <button
+                                  key={quarter}
+                                  type="button"
+                                  onClick={() => handleQuarterToggle(quarter)}
+                                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                                    isConfirmed
+                                      ? 'bg-green-500 text-white hover:bg-green-600'
+                                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {quarter}
+                                  {isConfirmed && ' ✓'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-xs text-slate-400 mt-2">
+                            {source.confirmedQuarters ? Object.values(source.confirmedQuarters).filter(Boolean).length : 0}/4 Quartale bestätigt = {formatCurrency((source.confirmedQuarters ? Object.values(source.confirmedQuarters).filter(Boolean).length : 0) * source.amount)} Jahresbonus
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-4">
-                      <p className="text-lg font-semibold text-emerald-600">
-                        {formatCurrency(source.amount)}
-                      </p>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleEditClick(source)}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteIncomeSource(source.id)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
