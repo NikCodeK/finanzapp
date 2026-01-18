@@ -1,43 +1,127 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useProjection } from '@/hooks/useProjection';
 import { useGoals } from '@/hooks/useGoals';
 import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import Card, { CardHeader } from '@/components/ui/Card';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
-import ProjectionLine from '@/components/charts/ProjectionLine';
 import GoalProgressBar from '@/components/goals/GoalProgressBar';
+import ProjectionLine from '@/components/charts/ProjectionLine';
 import { formatCurrency, classNames, formatDate } from '@/lib/utils';
-import { CheckCircleIcon, ClockIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import Link from 'next/link';
+import Button from '@/components/ui/Button';
 
 export default function ProjectionPage() {
-  const {
-    settings,
-    scenario,
-    setScenario,
-    updateField,
-    projection,
-    allScenarios,
-    isLoading,
-  } = useProjection();
-
   const currentYear = new Date().getFullYear();
   const { goals } = useGoals(currentYear);
   const {
     monthlyIncome,
+    monthlyIncomeWithoutBonus,
+    monthlyBonusIncome,
     monthlyFixedCosts,
     monthlyVariableCosts,
+    monthlyDebtPayments,
+    totalAssets,
+    totalDebt,
     availableIncome,
+    isLoading,
   } = useFinancialProfile();
 
   const [mounted, setMounted] = useState(false);
-  const [useLiveData, setUseLiveData] = useState(false);
+  const [scenario, setScenario] = useState<'base' | 'best' | 'worst'>('base');
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Generate projection based on financial profile
+  const projection = useMemo(() => {
+    const months: Array<{
+      month: string;
+      income: number;
+      expenses: number;
+      net: number;
+      cumulativeCash: number;
+    }> = [];
+
+    const startingCash = totalAssets;
+    const monthlyExpenses = monthlyFixedCosts + monthlyVariableCosts + monthlyDebtPayments;
+
+    // Scenario multipliers
+    const multipliers = {
+      base: { income: 1, expense: 1 },
+      best: { income: 1.1, expense: 0.9 },
+      worst: { income: 0.9, expense: 1.1 },
+    };
+
+    const mult = multipliers[scenario];
+    let cumulative = startingCash;
+
+    for (let i = 0; i < 12; i++) {
+      const date = new Date();
+      date.setMonth(date.getMonth() + i);
+      const monthName = date.toLocaleDateString('de-DE', { month: 'short', year: 'numeric' });
+
+      const income = monthlyIncome * mult.income;
+      const expenses = monthlyExpenses * mult.expense;
+      const net = income - expenses;
+      cumulative += net;
+
+      months.push({
+        month: monthName,
+        income,
+        expenses,
+        net,
+        cumulativeCash: cumulative,
+      });
+    }
+
+    return months;
+  }, [monthlyIncome, monthlyFixedCosts, monthlyVariableCosts, monthlyDebtPayments, totalAssets, scenario]);
+
+  // All scenarios for chart
+  const allScenarios = useMemo(() => {
+    const generateScenario = (mult: { income: number; expense: number }) => {
+      const months: Array<{
+        month: string;
+        income: number;
+        expenses: number;
+        net: number;
+        cumulativeCash: number;
+      }> = [];
+
+      const startingCash = totalAssets;
+      const monthlyExpenses = monthlyFixedCosts + monthlyVariableCosts + monthlyDebtPayments;
+      let cumulative = startingCash;
+
+      for (let i = 0; i < 12; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() + i);
+        const monthName = date.toLocaleDateString('de-DE', { month: 'short', year: 'numeric' });
+
+        const income = monthlyIncome * mult.income;
+        const expenses = monthlyExpenses * mult.expense;
+        const net = income - expenses;
+        cumulative += net;
+
+        months.push({
+          month: monthName,
+          income,
+          expenses,
+          net,
+          cumulativeCash: cumulative,
+        });
+      }
+
+      return months;
+    };
+
+    return {
+      base: generateScenario({ income: 1, expense: 1 }),
+      best: generateScenario({ income: 1.1, expense: 0.9 }),
+      worst: generateScenario({ income: 0.9, expense: 1.1 }),
+    };
+  }, [monthlyIncome, monthlyFixedCosts, monthlyVariableCosts, monthlyDebtPayments, totalAssets]);
 
   // Calculate goal projections
   const goalProjections = useMemo(() => {
@@ -72,15 +156,7 @@ export default function ProjectionPage() {
       });
   }, [goals, availableIncome]);
 
-  // Apply live data from financial profile
-  const handleApplyLiveData = () => {
-    updateField('expectedIncome', monthlyIncome);
-    updateField('fixedCosts', monthlyFixedCosts);
-    updateField('variableCosts', monthlyVariableCosts);
-    setUseLiveData(true);
-  };
-
-  if (!mounted || isLoading || !settings) {
+  if (!mounted || isLoading) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 bg-slate-200 rounded w-48" />
@@ -99,6 +175,7 @@ export default function ProjectionPage() {
   ];
 
   const activeGoals = goals.filter((g) => g.status === 'aktiv');
+  const totalExpenses = monthlyFixedCosts + monthlyVariableCosts + monthlyDebtPayments;
 
   return (
     <div className="space-y-6">
@@ -107,25 +184,48 @@ export default function ProjectionPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Finanzprognose</h1>
           <p className="text-slate-500 mt-1">
-            12-Monats-Prognose basierend auf Ihren Eingaben
+            12-Monats-Prognose basierend auf deinen Finanzdaten
           </p>
         </div>
-        {monthlyIncome > 0 && (
-          <Button
-            variant={useLiveData ? 'secondary' : 'primary'}
-            onClick={handleApplyLiveData}
-          >
-            {useLiveData ? 'Live-Daten angewendet' : 'Live-Daten aus "Meine Finanzen" laden'}
-          </Button>
-        )}
+        <Link href="/finanzen">
+          <Button variant="secondary">Finanzdaten bearbeiten</Button>
+        </Link>
       </div>
+
+      {/* Current Financial Data Summary */}
+      <Card>
+        <CardHeader title="Basis-Daten" subtitle="Aus 'Meine Finanzen'" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-emerald-50 rounded-lg p-4">
+            <p className="text-xs text-emerald-600 uppercase">Monatl. Einkommen</p>
+            <p className="text-xl font-bold text-emerald-700">{formatCurrency(monthlyIncome)}</p>
+            {monthlyBonusIncome > 0 && (
+              <p className="text-xs text-emerald-500">inkl. {formatCurrency(monthlyBonusIncome)} Bonus</p>
+            )}
+          </div>
+          <div className="bg-red-50 rounded-lg p-4">
+            <p className="text-xs text-red-600 uppercase">Monatl. Ausgaben</p>
+            <p className="text-xl font-bold text-red-700">{formatCurrency(totalExpenses)}</p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-4">
+            <p className="text-xs text-blue-600 uppercase">Monatl. Verfügbar</p>
+            <p className={`text-xl font-bold ${availableIncome >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+              {formatCurrency(availableIncome)}
+            </p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-4">
+            <p className="text-xs text-purple-600 uppercase">Startvermögen</p>
+            <p className="text-xl font-bold text-purple-700">{formatCurrency(totalAssets)}</p>
+          </div>
+        </div>
+      </Card>
 
       {/* Goals Integration */}
       {activeGoals.length > 0 && (
         <Card>
           <CardHeader
             title="Zielprognose"
-            subtitle="Wann werden Ihre Ziele bei aktuellem Tempo erreicht?"
+            subtitle="Wann werden deine Ziele bei aktuellem Tempo erreicht?"
           />
           <div className="space-y-4">
             {goalProjections.map(({
@@ -212,80 +312,19 @@ export default function ProjectionPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart */}
-        <Card className="lg:col-span-2">
-          <CardHeader
-            title="Cash Flow Prognose"
-            subtitle="Kumulierter Cashflow über 12 Monate"
-          />
-          <ProjectionLine
-            base={allScenarios.base}
-            best={allScenarios.best}
-            worst={allScenarios.worst}
-            showAllScenarios={true}
-          />
-        </Card>
-
-        {/* Settings */}
-        <Card>
-          <CardHeader
-            title="Einstellungen"
-            subtitle={useLiveData ? 'Basierend auf Live-Daten' : undefined}
-          />
-          <div className="space-y-4">
-            <Input
-              label="Erwartetes Einkommen (monatlich)"
-              type="number"
-              value={settings.expectedIncome}
-              onChange={(e) =>
-                updateField('expectedIncome', parseFloat(e.target.value) || 0)
-              }
-            />
-            <Input
-              label="Fixkosten (monatlich)"
-              type="number"
-              value={settings.fixedCosts}
-              onChange={(e) =>
-                updateField('fixedCosts', parseFloat(e.target.value) || 0)
-              }
-            />
-            <Input
-              label="Variable Kosten (monatlich)"
-              type="number"
-              value={settings.variableCosts}
-              onChange={(e) =>
-                updateField('variableCosts', parseFloat(e.target.value) || 0)
-              }
-            />
-            <Input
-              label="Wachstumsrate (%)"
-              type="number"
-              step="0.1"
-              value={settings.growthRate}
-              onChange={(e) =>
-                updateField('growthRate', parseFloat(e.target.value) || 0)
-              }
-            />
-            <Input
-              label="Startkapital"
-              type="number"
-              value={settings.startingCash}
-              onChange={(e) =>
-                updateField('startingCash', parseFloat(e.target.value) || 0)
-              }
-            />
-            <Input
-              label="Startschulden"
-              type="number"
-              value={settings.startingDebt}
-              onChange={(e) =>
-                updateField('startingDebt', parseFloat(e.target.value) || 0)
-              }
-            />
-          </div>
-        </Card>
-      </div>
+      {/* Chart */}
+      <Card>
+        <CardHeader
+          title="Cash Flow Prognose"
+          subtitle="Kumulierter Cashflow über 12 Monate"
+        />
+        <ProjectionLine
+          base={allScenarios.base}
+          best={allScenarios.best}
+          worst={allScenarios.worst}
+          showAllScenarios={true}
+        />
+      </Card>
 
       {/* Scenario Tabs */}
       <div className="flex gap-2">
@@ -332,8 +371,8 @@ export default function ProjectionPage() {
               scenario === 'base'
                 ? 'Basis'
                 : scenario === 'best'
-                ? 'Best Case'
-                : 'Worst Case'
+                ? 'Best Case (+10% Einkommen, -10% Ausgaben)'
+                : 'Worst Case (-10% Einkommen, +10% Ausgaben)'
             } Szenario`}
           />
         </div>
@@ -401,7 +440,7 @@ export default function ProjectionPage() {
           const data = allScenarios[key];
           const finalMonth = data[data.length - 1];
           const totalIncome = data.reduce((sum, m) => sum + m.income, 0);
-          const totalExpenses = data.reduce((sum, m) => sum + m.expenses, 0);
+          const totalExpensesScenario = data.reduce((sum, m) => sum + m.expenses, 0);
 
           return (
             <Card
@@ -421,7 +460,7 @@ export default function ProjectionPage() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-500">
-                    Gesamteinnahmen
+                    Gesamteinnahmen (12 Mo.)
                   </span>
                   <span className="text-sm font-medium text-green-600">
                     {formatCurrency(totalIncome)}
@@ -430,7 +469,7 @@ export default function ProjectionPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-500">Gesamtausgaben</span>
                   <span className="text-sm font-medium text-red-600">
-                    {formatCurrency(totalExpenses)}
+                    {formatCurrency(totalExpensesScenario)}
                   </span>
                 </div>
                 <div className="border-t border-slate-200 pt-3">
