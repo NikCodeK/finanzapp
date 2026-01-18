@@ -9,6 +9,15 @@ export interface Transaction {
   note: string;
 }
 
+export interface TransactionFilters {
+  type?: Transaction['type'];
+  category?: string;
+  account?: string;
+  search?: string;
+  startDateISO?: string;
+  endDateISO?: string;
+}
+
 export interface WeeklyReport {
   id: string;
   weekStartISO: string;

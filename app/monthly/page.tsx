@@ -6,7 +6,6 @@ import { useBudgets } from '@/hooks/useBudgets';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
-import IncomeExpenseBar from '@/components/charts/IncomeExpenseBar';
 import CategoryPie from '@/components/charts/CategoryPie';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import {
@@ -17,19 +16,34 @@ import {
   classNames,
 } from '@/lib/utils';
 import {
-  computeMonthlySummary,
-  getTransactionsForMonth,
   groupByCategory,
   getTopCategories,
 } from '@/lib/calculations';
-import { addMonths, subMonths, format, parseISO } from 'date-fns';
+import { addMonths, subMonths, format, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 
 export default function MonthlyPage() {
-  const { transactions, isLoading } = useTransactions();
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthISO());
+  const monthDate = useMemo(
+    () => parseISO(selectedMonth + '-01'),
+    [selectedMonth]
+  );
+  const monthStartISO = useMemo(
+    () => format(startOfMonth(monthDate), 'yyyy-MM-dd'),
+    [monthDate]
+  );
+  const monthEndISO = useMemo(
+    () => format(endOfMonth(monthDate), 'yyyy-MM-dd'),
+    [monthDate]
+  );
+
+  const { transactions, isLoading } = useTransactions({
+    mode: 'range',
+    startDateISO: monthStartISO,
+    endDateISO: monthEndISO,
+  });
   const { getBudgetsByMonth } = useBudgets();
 
   const [mounted, setMounted] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthISO());
 
   useEffect(() => {
     setMounted(true);
@@ -42,15 +56,23 @@ export default function MonthlyPage() {
     }));
   }, []);
 
-  const monthlySummary = useMemo(
-    () => computeMonthlySummary(transactions, selectedMonth),
-    [transactions, selectedMonth]
-  );
+  const monthTransactions = useMemo(() => transactions, [transactions]);
 
-  const monthTransactions = useMemo(
-    () => getTransactionsForMonth(transactions, selectedMonth),
-    [transactions, selectedMonth]
-  );
+  const monthlySummary = useMemo(() => {
+    const income = monthTransactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const expenses = monthTransactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const net = income - expenses;
+    return {
+      income,
+      expenses,
+      net,
+      savingsRate: income > 0 ? net / income : 0,
+    };
+  }, [monthTransactions]);
 
   const expenseCategories = useMemo(
     () => getTopCategories(monthTransactions, 'expense', 10),

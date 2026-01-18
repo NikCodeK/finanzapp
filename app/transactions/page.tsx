@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTransactions } from '@/hooks/useTransactions';
 import TransactionModal from '@/components/TransactionModal';
 import TransactionTable from '@/components/TransactionTable';
-import Card, { CardHeader } from '@/components/ui/Card';
+import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import Input from '@/components/ui/Input';
@@ -13,14 +13,6 @@ import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import { formatCurrency } from '@/lib/utils';
 
 export default function TransactionsPage() {
-  const {
-    transactions,
-    isLoading,
-    addTransaction,
-    updateTransaction,
-    deleteTransaction,
-  } = useTransactions();
-
   const [mounted, setMounted] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(
@@ -33,34 +25,47 @@ export default function TransactionsPage() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterAccount, setFilterAccount] = useState('all');
   const [filterSearch, setFilterSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filterSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filterSearch]);
+
   const allCategories = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
 
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      if (filterType !== 'all' && t.type !== filterType) return false;
-      if (filterCategory !== 'all' && t.category !== filterCategory) return false;
-      if (filterAccount !== 'all' && t.account !== filterAccount) return false;
-      if (
-        filterSearch &&
-        !t.note.toLowerCase().includes(filterSearch.toLowerCase()) &&
-        !t.category.toLowerCase().includes(filterSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [transactions, filterType, filterCategory, filterAccount, filterSearch]);
+  const filters = useMemo(() => {
+    return {
+      type: filterType === 'all' ? undefined : filterType,
+      category: filterCategory === 'all' ? undefined : filterCategory,
+      account: filterAccount === 'all' ? undefined : filterAccount,
+      search: debouncedSearch || undefined,
+    };
+  }, [filterType, filterCategory, filterAccount, debouncedSearch]);
 
-  const totalIncome = filteredTransactions
+  const {
+    transactions,
+    isLoading,
+    isLoadingMore,
+    totalCount,
+    hasMore,
+    loadMore,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+  } = useTransactions({ mode: 'page', filters, pageSize: 50 });
+
+  const totalIncome = transactions
     .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
 
-  const totalExpenses = filteredTransactions
+  const totalExpenses = transactions
     .filter((t) => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
@@ -108,7 +113,7 @@ export default function TransactionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Transaktionen</h1>
           <p className="text-slate-500 mt-1">
-            {filteredTransactions.length} von {transactions.length} Transaktionen
+            {transactions.length} von {totalCount} Transaktionen
           </p>
         </div>
         <div className="flex gap-3">
@@ -200,11 +205,22 @@ export default function TransactionsPage() {
       {/* Transactions Table */}
       <Card padding="none">
         <TransactionTable
-          transactions={filteredTransactions}
+          transactions={transactions}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
       </Card>
+      {hasMore && (
+        <div className="flex justify-center">
+          <Button
+            variant="secondary"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+          >
+            {isLoadingMore ? 'Lade...' : 'Mehr laden'}
+          </Button>
+        </div>
+      )}
 
       {/* Modal */}
       <TransactionModal

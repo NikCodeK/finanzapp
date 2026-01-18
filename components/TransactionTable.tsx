@@ -26,11 +26,6 @@ export default function TransactionTable({
     );
   }
 
-  // Sort by date descending
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => b.dateISO.localeCompare(a.dateISO)
-  );
-
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -59,7 +54,7 @@ export default function TransactionTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {sortedTransactions.map((transaction) => (
+          {transactions.map((transaction) => (
             <tr
               key={transaction.id}
               className="hover:bg-slate-50 transition-colors"

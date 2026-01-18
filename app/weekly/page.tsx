@@ -14,7 +14,20 @@ import { computeWeeklySummary } from '@/lib/calculations';
 export default function WeeklyPage() {
   const { reports, isLoading, addReport, updateReport, deleteReport } =
     useWeeklyReports();
-  const { transactions } = useTransactions();
+  const weekRange = useMemo(() => getWeekRange(new Date()), []);
+  const weekStartISO = useMemo(
+    () => toDateISO(weekRange.start),
+    [weekRange]
+  );
+  const weekEndISO = useMemo(
+    () => toDateISO(weekRange.end),
+    [weekRange]
+  );
+  const { transactions, isLoading: isTransactionsLoading } = useTransactions({
+    mode: 'range',
+    startDateISO: weekStartISO,
+    endDateISO: weekEndISO,
+  });
 
   const [mounted, setMounted] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -26,13 +39,12 @@ export default function WeeklyPage() {
 
   // Calculate current week's data from transactions
   const currentWeekData = useMemo(() => {
-    const weekRange = getWeekRange(new Date());
     return computeWeeklySummary(
       transactions,
-      toDateISO(weekRange.start),
-      toDateISO(weekRange.end)
+      weekStartISO,
+      weekEndISO
     );
-  }, [transactions]);
+  }, [transactions, weekStartISO, weekEndISO]);
 
   const handleSave = (reportData: Omit<WeeklyReport, 'id'>) => {
     if (editingReport) {
@@ -60,7 +72,7 @@ export default function WeeklyPage() {
     setEditingReport(null);
   };
 
-  if (!mounted || isLoading) {
+  if (!mounted || isLoading || isTransactionsLoading) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 bg-slate-200 rounded w-48" />

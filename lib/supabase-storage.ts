@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import {
   Transaction,
+  TransactionFilters,
   WeeklyReport,
   Budget,
   ProjectionSettings,
@@ -14,22 +15,13 @@ import {
   QuarterlyBonusStatus
 } from './types';
 
-// ============================================
-// TRANSACTIONS
-// ============================================
+type TransactionPage = {
+  data: Transaction[];
+  total: number;
+};
 
-export async function getTransactions(): Promise<Transaction[]> {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .order('date_iso', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching transactions:', error);
-    return [];
-  }
-
-  return (data || []).map(row => ({
+function mapTransaction(row: any): Transaction {
+  return {
     id: row.id,
     dateISO: row.date_iso,
     amount: parseFloat(row.amount),
@@ -38,7 +30,95 @@ export async function getTransactions(): Promise<Transaction[]> {
     account: row.account,
     recurring: row.recurring,
     note: row.note || '',
-  }));
+  };
+}
+
+function applyTransactionFilters(
+  query: any,
+  filters?: TransactionFilters
+) {
+  if (!filters) return query;
+
+  if (filters.type) {
+    query = query.eq('type', filters.type);
+  }
+  if (filters.category && filters.category !== 'all') {
+    query = query.eq('category', filters.category);
+  }
+  if (filters.account && filters.account !== 'all') {
+    query = query.eq('account', filters.account);
+  }
+  if (filters.startDateISO) {
+    query = query.gte('date_iso', filters.startDateISO);
+  }
+  if (filters.endDateISO) {
+    query = query.lte('date_iso', filters.endDateISO);
+  }
+  if (filters.search && filters.search.trim().length > 0) {
+    const escaped = filters.search.trim().replace(/,/g, '');
+    query = query.or(
+      `note.ilike.%${escaped}%,category.ilike.%${escaped}%`
+    );
+  }
+
+  return query;
+}
+
+// ============================================
+// TRANSACTIONS
+// ============================================
+
+export async function getTransactionsPage(
+  filters?: TransactionFilters,
+  limit = 50,
+  offset = 0
+): Promise<TransactionPage> {
+  let query = supabase
+    .from('transactions')
+    .select(
+      'id, date_iso, amount, type, category, account, recurring, note',
+      { count: 'exact' }
+    )
+    .order('date_iso', { ascending: false });
+
+  query = applyTransactionFilters(query, filters);
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error('Error fetching transactions:', error);
+    return { data: [], total: 0 };
+  }
+
+  return {
+    data: (data || []).map(mapTransaction),
+    total: count || 0,
+  };
+}
+
+export async function getTransactionsByDateRange(
+  startISO: string,
+  endISO: string,
+  filters?: TransactionFilters
+): Promise<Transaction[]> {
+  let query = supabase
+    .from('transactions')
+    .select('id, date_iso, amount, type, category, account, recurring, note')
+    .order('date_iso', { ascending: false })
+    .gte('date_iso', startISO)
+    .lte('date_iso', endISO);
+
+  query = applyTransactionFilters(query, filters);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching transactions by date range:', error);
+    return [];
+  }
+
+  return (data || []).map(mapTransaction);
 }
 
 export async function addTransaction(transaction: Omit<Transaction, 'id'>): Promise<Transaction | null> {
@@ -53,7 +133,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
       recurring: transaction.recurring,
       note: transaction.note,
     })
-    .select()
+    .select('id, date_iso, amount, type, category, account, recurring, note')
     .single();
 
   if (error) {
@@ -61,16 +141,7 @@ export async function addTransaction(transaction: Omit<Transaction, 'id'>): Prom
     return null;
   }
 
-  return {
-    id: data.id,
-    dateISO: data.date_iso,
-    amount: parseFloat(data.amount),
-    type: data.type,
-    category: data.category,
-    account: data.account,
-    recurring: data.recurring,
-    note: data.note || '',
-  };
+  return mapTransaction(data);
 }
 
 export async function updateTransaction(transaction: Transaction): Promise<boolean> {
@@ -114,7 +185,9 @@ export async function deleteTransaction(id: string): Promise<boolean> {
 export async function getWeeklyReports(): Promise<EnhancedWeeklyReport[]> {
   const { data, error } = await supabase
     .from('weekly_reports')
-    .select('*')
+    .select(
+      'id, week_start_iso, week_end_iso, income, expenses, net, top3, insights, next_decision, mood, biggest_win, biggest_challenge, savings_this_week, goal_contributions, previous_week_income, previous_week_expenses, income_change, expense_change'
+    )
     .order('week_start_iso', { ascending: false });
 
   if (error) {
@@ -166,7 +239,9 @@ export async function addWeeklyReport(report: Omit<EnhancedWeeklyReport, 'id'>):
       income_change: report.incomeChange,
       expense_change: report.expenseChange,
     })
-    .select()
+    .select(
+      'id, week_start_iso, week_end_iso, income, expenses, net, top3, insights, next_decision, mood, biggest_win, biggest_challenge, savings_this_week, goal_contributions'
+    )
     .single();
 
   if (error) {
@@ -239,7 +314,7 @@ export async function deleteWeeklyReport(id: string): Promise<boolean> {
 export async function getIncomeSources(): Promise<IncomeSource[]> {
   const { data, error } = await supabase
     .from('income_sources')
-    .select('*')
+    .select('id, name, amount, frequency, is_active, confirmed_quarters, note')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -269,7 +344,7 @@ export async function addIncomeSource(source: Omit<IncomeSource, 'id'>): Promise
       confirmed_quarters: source.confirmedQuarters || { Q1: false, Q2: false, Q3: false, Q4: false },
       note: source.note,
     })
-    .select()
+    .select('id, name, amount, frequency, is_active, confirmed_quarters, note')
     .single();
 
   if (error) {
@@ -328,7 +403,7 @@ export async function deleteIncomeSource(id: string): Promise<boolean> {
 export async function getFixedCosts(): Promise<FixedCost[]> {
   const { data, error } = await supabase
     .from('fixed_costs')
-    .select('*')
+    .select('id, name, category, amount, frequency, is_active, note')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -358,7 +433,7 @@ export async function addFixedCost(cost: Omit<FixedCost, 'id'>): Promise<FixedCo
       is_active: cost.isActive,
       note: cost.note,
     })
-    .select()
+    .select('id, name, category, amount, frequency, is_active, note')
     .single();
 
   if (error) {
@@ -417,7 +492,7 @@ export async function deleteFixedCost(id: string): Promise<boolean> {
 export async function getVariableCosts(): Promise<VariableCostEstimate[]> {
   const { data, error } = await supabase
     .from('variable_costs')
-    .select('*')
+    .select('id, category, estimated_monthly, note')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -441,7 +516,7 @@ export async function addVariableCost(cost: Omit<VariableCostEstimate, 'id'>): P
       estimated_monthly: cost.estimatedMonthly,
       note: cost.note,
     })
-    .select()
+    .select('id, category, estimated_monthly, note')
     .single();
 
   if (error) {
@@ -494,7 +569,7 @@ export async function deleteVariableCost(id: string): Promise<boolean> {
 export async function getDebts(): Promise<Debt[]> {
   const { data, error } = await supabase
     .from('debts')
-    .select('*')
+    .select('id, name, type, original_amount, current_balance, interest_rate, monthly_payment, is_variable_payment, min_payment, max_payment, start_date_iso, note')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -534,7 +609,7 @@ export async function addDebt(debt: Omit<Debt, 'id'>): Promise<Debt | null> {
       start_date_iso: debt.startDateISO,
       note: debt.note,
     })
-    .select()
+    .select('id, name, type, original_amount, current_balance, interest_rate, monthly_payment, is_variable_payment, min_payment, max_payment, start_date_iso, note')
     .single();
 
   if (error) {
@@ -603,7 +678,7 @@ export async function deleteDebt(id: string): Promise<boolean> {
 export async function getAssets(): Promise<Assets> {
   const { data, error } = await supabase
     .from('assets')
-    .select('*')
+    .select('id, savings, investments, other')
     .limit(1)
     .single();
 
@@ -665,7 +740,7 @@ export async function saveAssets(assets: Assets): Promise<boolean> {
 export async function getGoals(): Promise<Goal[]> {
   const { data, error } = await supabase
     .from('goals')
-    .select('*')
+    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note')
     .order('priority', { ascending: true })
     .order('deadline_iso', { ascending: true });
 
@@ -694,7 +769,7 @@ export async function getGoals(): Promise<Goal[]> {
 export async function getGoalsByYear(year: number): Promise<Goal[]> {
   const { data, error } = await supabase
     .from('goals')
-    .select('*')
+    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note')
     .eq('year', year)
     .order('priority', { ascending: true })
     .order('deadline_iso', { ascending: true });
@@ -738,7 +813,7 @@ export async function addGoal(goal: Omit<Goal, 'id'>): Promise<Goal | null> {
       linked_debt_id: goal.linkedDebtId,
       note: goal.note,
     })
-    .select()
+    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note')
     .single();
 
   if (error) {
@@ -808,7 +883,7 @@ export async function deleteGoal(id: string): Promise<boolean> {
 export async function getProjectionSettings(): Promise<ProjectionSettings> {
   const { data, error } = await supabase
     .from('projection_settings')
-    .select('*')
+    .select('id, expected_income, fixed_costs, variable_costs, growth_rate, starting_cash, starting_debt, scenario_multipliers')
     .limit(1)
     .single();
 
@@ -889,7 +964,7 @@ export async function saveProjectionSettings(settings: ProjectionSettings): Prom
 export async function getBudgets(): Promise<Budget[]> {
   const { data, error } = await supabase
     .from('budgets')
-    .select('*')
+    .select('id, month_iso, category, budget_amount')
     .order('month_iso', { ascending: false });
 
   if (error) {
@@ -913,7 +988,7 @@ export async function addBudget(budget: Omit<Budget, 'id'>): Promise<Budget | nu
       category: budget.category,
       budget_amount: budget.budgetAmount,
     })
-    .select()
+    .select('id, month_iso, category, budget_amount')
     .single();
 
   if (error) {
