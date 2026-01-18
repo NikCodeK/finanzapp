@@ -10,8 +10,10 @@ import {
   ArrowTrendingUpIcon,
   WalletIcon,
   FlagIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '@/lib/utils';
+import { useAuth } from './AuthProvider';
 
 const currentYear = new Date().getFullYear();
 
@@ -27,6 +29,7 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   return (
     <div className="flex h-screen w-60 flex-col bg-slate-900">
@@ -61,10 +64,14 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-slate-800 px-6 py-4">
-        <p className="text-xs text-slate-500">
-          Personal Finance Tracker
-        </p>
+      <div className="border-t border-slate-800 px-3 py-4">
+        <button
+          onClick={logout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+        >
+          <ArrowRightOnRectangleIcon className="h-5 w-5" />
+          Abmelden
+        </button>
       </div>
     </div>
   );
