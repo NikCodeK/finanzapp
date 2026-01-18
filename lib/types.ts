@@ -159,7 +159,7 @@ export interface Assets {
 }
 
 // ZIELE
-export type GoalType = 'sparen' | 'schuldenabbau' | 'investition' | 'notgroschen' | 'anschaffung';
+export type GoalType = 'sparen' | 'schuldenabbau' | 'investition' | 'notgroschen' | 'anschaffung' | 'einkommen';
 export type GoalStatus = 'aktiv' | 'erreicht' | 'pausiert';
 
 export interface Goal {
@@ -220,4 +220,5 @@ export const GOAL_TYPES: { value: GoalType; label: string }[] = [
   { value: 'investition', label: 'Investition' },
   { value: 'notgroschen', label: 'Notgroschen' },
   { value: 'anschaffung', label: 'Anschaffung' },
+  { value: 'einkommen', label: 'Einkommen erhöhen' },
 ];
