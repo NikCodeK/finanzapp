@@ -4,53 +4,52 @@ import { useState, useEffect, useCallback } from 'react';
 import { Transaction } from '@/lib/types';
 import {
   getTransactions,
-  saveTransactions,
-  initializeStorage,
-} from '@/lib/storage';
-import { generateId } from '@/lib/utils';
+  addTransaction as addTransactionDB,
+  updateTransaction as updateTransactionDB,
+  deleteTransaction as deleteTransactionDB,
+} from '@/lib/supabase-storage';
 
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    initializeStorage();
-    const data = getTransactions();
+  const loadTransactions = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getTransactions();
     setTransactions(data);
     setIsLoading(false);
   }, []);
 
-  const addTransaction = useCallback((
+  useEffect(() => {
+    loadTransactions();
+  }, [loadTransactions]);
+
+  const addTransaction = useCallback(async (
     transaction: Omit<Transaction, 'id'>
   ) => {
-    const newTransaction: Transaction = {
-      ...transaction,
-      id: generateId(),
-    };
-    setTransactions((prev) => {
-      const updated = [...prev, newTransaction];
-      saveTransactions(updated);
-      return updated;
-    });
+    const newTransaction = await addTransactionDB(transaction);
+    if (newTransaction) {
+      setTransactions((prev) => [...prev, newTransaction]);
+    }
     return newTransaction;
   }, []);
 
-  const updateTransaction = useCallback((updated: Transaction) => {
-    setTransactions((prev) => {
-      const newTransactions = prev.map((t) =>
-        t.id === updated.id ? updated : t
+  const updateTransaction = useCallback(async (updated: Transaction) => {
+    const success = await updateTransactionDB(updated);
+    if (success) {
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === updated.id ? updated : t))
       );
-      saveTransactions(newTransactions);
-      return newTransactions;
-    });
+    }
+    return success;
   }, []);
 
-  const deleteTransaction = useCallback((id: string) => {
-    setTransactions((prev) => {
-      const filtered = prev.filter((t) => t.id !== id);
-      saveTransactions(filtered);
-      return filtered;
-    });
+  const deleteTransaction = useCallback(async (id: string) => {
+    const success = await deleteTransactionDB(id);
+    if (success) {
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+    }
+    return success;
   }, []);
 
   const getTransactionsByMonth = useCallback(
@@ -77,5 +76,6 @@ export function useTransactions() {
     deleteTransaction,
     getTransactionsByMonth,
     getTransactionsByDateRange,
+    refresh: loadTransactions,
   };
 }

@@ -1,60 +1,53 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { WeeklyReport } from '@/lib/types';
+import { EnhancedWeeklyReport } from '@/lib/types';
 import {
   getWeeklyReports,
-  saveWeeklyReports,
-  initializeStorage,
-} from '@/lib/storage';
-import { generateId } from '@/lib/utils';
+  addWeeklyReport as addWeeklyReportDB,
+  updateWeeklyReport as updateWeeklyReportDB,
+  deleteWeeklyReport as deleteWeeklyReportDB,
+} from '@/lib/supabase-storage';
 
 export function useWeeklyReports() {
-  const [reports, setReports] = useState<WeeklyReport[]>([]);
+  const [reports, setReports] = useState<EnhancedWeeklyReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    initializeStorage();
-    const data = getWeeklyReports();
-    // Sort by weekStartISO descending (newest first)
-    const sorted = [...data].sort(
-      (a, b) => b.weekStartISO.localeCompare(a.weekStartISO)
-    );
-    setReports(sorted);
+  const loadReports = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getWeeklyReports();
+    setReports(data);
     setIsLoading(false);
   }, []);
 
-  const addReport = useCallback((
-    report: Omit<WeeklyReport, 'id'>
-  ) => {
-    const newReport: WeeklyReport = {
-      ...report,
-      id: generateId(),
-    };
-    setReports((prev) => {
-      const updated = [newReport, ...prev];
-      saveWeeklyReports(updated);
-      return updated;
-    });
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
+
+  const addReport = useCallback(async (report: Omit<EnhancedWeeklyReport, 'id'>) => {
+    const newReport = await addWeeklyReportDB(report);
+    if (newReport) {
+      setReports((prev) => [newReport, ...prev]);
+    }
     return newReport;
   }, []);
 
-  const updateReport = useCallback((updated: WeeklyReport) => {
-    setReports((prev) => {
-      const newReports = prev.map((r) =>
-        r.id === updated.id ? updated : r
+  const updateReport = useCallback(async (updated: EnhancedWeeklyReport) => {
+    const success = await updateWeeklyReportDB(updated);
+    if (success) {
+      setReports((prev) =>
+        prev.map((r) => (r.id === updated.id ? updated : r))
       );
-      saveWeeklyReports(newReports);
-      return newReports;
-    });
+    }
+    return success;
   }, []);
 
-  const deleteReport = useCallback((id: string) => {
-    setReports((prev) => {
-      const filtered = prev.filter((r) => r.id !== id);
-      saveWeeklyReports(filtered);
-      return filtered;
-    });
+  const deleteReport = useCallback(async (id: string) => {
+    const success = await deleteWeeklyReportDB(id);
+    if (success) {
+      setReports((prev) => prev.filter((r) => r.id !== id));
+    }
+    return success;
   }, []);
 
   const getReportByWeek = useCallback(
@@ -71,5 +64,6 @@ export function useWeeklyReports() {
     updateReport,
     deleteReport,
     getReportByWeek,
+    refresh: loadReports,
   };
 }

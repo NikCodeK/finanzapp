@@ -4,51 +4,50 @@ import { useState, useEffect, useCallback } from 'react';
 import { Debt } from '@/lib/types';
 import {
   getDebts,
-  saveDebts,
-  initializeStorage,
-} from '@/lib/storage';
-import { generateId } from '@/lib/utils';
+  addDebt as addDebtDB,
+  updateDebt as updateDebtDB,
+  deleteDebt as deleteDebtDB,
+} from '@/lib/supabase-storage';
 
 export function useDebts() {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    initializeStorage();
-    const data = getDebts();
+  const loadDebts = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getDebts();
     setDebts(data);
     setIsLoading(false);
   }, []);
 
-  const addDebt = useCallback((debt: Omit<Debt, 'id'>) => {
-    const newDebt: Debt = {
-      ...debt,
-      id: generateId(),
-    };
-    setDebts((prev) => {
-      const updated = [...prev, newDebt];
-      saveDebts(updated);
-      return updated;
-    });
+  useEffect(() => {
+    loadDebts();
+  }, [loadDebts]);
+
+  const addDebt = useCallback(async (debt: Omit<Debt, 'id'>) => {
+    const newDebt = await addDebtDB(debt);
+    if (newDebt) {
+      setDebts((prev) => [...prev, newDebt]);
+    }
     return newDebt;
   }, []);
 
-  const updateDebt = useCallback((updated: Debt) => {
-    setDebts((prev) => {
-      const newDebts = prev.map((d) =>
-        d.id === updated.id ? updated : d
+  const updateDebt = useCallback(async (updated: Debt) => {
+    const success = await updateDebtDB(updated);
+    if (success) {
+      setDebts((prev) =>
+        prev.map((d) => (d.id === updated.id ? updated : d))
       );
-      saveDebts(newDebts);
-      return newDebts;
-    });
+    }
+    return success;
   }, []);
 
-  const deleteDebt = useCallback((id: string) => {
-    setDebts((prev) => {
-      const filtered = prev.filter((d) => d.id !== id);
-      saveDebts(filtered);
-      return filtered;
-    });
+  const deleteDebt = useCallback(async (id: string) => {
+    const success = await deleteDebtDB(id);
+    if (success) {
+      setDebts((prev) => prev.filter((d) => d.id !== id));
+    }
+    return success;
   }, []);
 
   const getTotalDebt = useCallback(() => {
@@ -67,5 +66,6 @@ export function useDebts() {
     deleteDebt,
     getTotalDebt,
     getTotalMonthlyPayments,
+    refresh: loadDebts,
   };
 }

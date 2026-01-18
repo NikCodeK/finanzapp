@@ -4,9 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ProjectionSettings, ProjectionMonth } from '@/lib/types';
 import {
   getProjectionSettings,
-  saveProjectionSettings,
-  initializeStorage,
-} from '@/lib/storage';
+  saveProjectionSettings as saveProjectionSettingsDB,
+} from '@/lib/supabase-storage';
 import { generateProjection } from '@/lib/calculations';
 
 export function useProjection() {
@@ -14,29 +13,35 @@ export function useProjection() {
   const [scenario, setScenario] = useState<'base' | 'best' | 'worst'>('base');
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    initializeStorage();
-    const data = getProjectionSettings();
+  const loadSettings = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getProjectionSettings();
     setSettings(data);
     setIsLoading(false);
   }, []);
 
-  const updateSettings = useCallback((updated: ProjectionSettings) => {
-    setSettings(updated);
-    saveProjectionSettings(updated);
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
+  const updateSettings = useCallback(async (updated: ProjectionSettings) => {
+    const success = await saveProjectionSettingsDB(updated);
+    if (success) {
+      setSettings(updated);
+    }
+    return success;
   }, []);
 
   const updateField = useCallback(
-    <K extends keyof ProjectionSettings>(
+    async <K extends keyof ProjectionSettings>(
       field: K,
       value: ProjectionSettings[K]
     ) => {
-      if (!settings) return;
+      if (!settings) return false;
       const updated = { ...settings, [field]: value };
-      setSettings(updated);
-      saveProjectionSettings(updated);
+      return updateSettings(updated);
     },
-    [settings]
+    [settings, updateSettings]
   );
 
   const projection: ProjectionMonth[] = useMemo(() => {
@@ -62,5 +67,6 @@ export function useProjection() {
     projection,
     allScenarios,
     isLoading,
+    refresh: loadSettings,
   };
 }

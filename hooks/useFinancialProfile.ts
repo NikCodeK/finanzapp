@@ -10,18 +10,24 @@ import {
 } from '@/lib/types';
 import {
   getIncomeSources,
-  saveIncomeSources,
+  addIncomeSource as addIncomeSourceDB,
+  updateIncomeSource as updateIncomeSourceDB,
+  deleteIncomeSource as deleteIncomeSourceDB,
   getFixedCosts,
-  saveFixedCosts,
+  addFixedCost as addFixedCostDB,
+  updateFixedCost as updateFixedCostDB,
+  deleteFixedCost as deleteFixedCostDB,
   getVariableCosts,
-  saveVariableCosts,
+  addVariableCost as addVariableCostDB,
+  updateVariableCost as updateVariableCostDB,
+  deleteVariableCost as deleteVariableCostDB,
   getDebts,
-  saveDebts,
+  addDebt as addDebtDB,
+  updateDebt as updateDebtDB,
+  deleteDebt as deleteDebtDB,
   getAssets,
-  saveAssets,
-  initializeStorage,
-} from '@/lib/storage';
-import { generateId } from '@/lib/utils';
+  saveAssets as saveAssetsDB,
+} from '@/lib/supabase-storage';
 
 export function useFinancialProfile() {
   const [incomeSources, setIncomeSources] = useState<IncomeSource[]>([]);
@@ -31,143 +37,157 @@ export function useFinancialProfile() {
   const [assets, setAssets] = useState<Assets>({ savings: 0, investments: 0, other: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    initializeStorage();
-    setIncomeSources(getIncomeSources());
-    setFixedCosts(getFixedCosts());
-    setVariableCosts(getVariableCosts());
-    setDebts(getDebts());
-    setAssets(getAssets());
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    const [incomeData, fixedData, variableData, debtData, assetData] = await Promise.all([
+      getIncomeSources(),
+      getFixedCosts(),
+      getVariableCosts(),
+      getDebts(),
+      getAssets(),
+    ]);
+    setIncomeSources(incomeData);
+    setFixedCosts(fixedData);
+    setVariableCosts(variableData);
+    setDebts(debtData);
+    setAssets(assetData);
     setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // ============================================
   // INCOME SOURCES
   // ============================================
 
-  const addIncomeSource = useCallback((source: Omit<IncomeSource, 'id'>) => {
-    const newSource: IncomeSource = { ...source, id: generateId() };
-    setIncomeSources((prev) => {
-      const updated = [...prev, newSource];
-      saveIncomeSources(updated);
-      return updated;
-    });
+  const addIncomeSource = useCallback(async (source: Omit<IncomeSource, 'id'>) => {
+    const newSource = await addIncomeSourceDB(source);
+    if (newSource) {
+      setIncomeSources((prev) => [...prev, newSource]);
+    }
     return newSource;
   }, []);
 
-  const updateIncomeSource = useCallback((updated: IncomeSource) => {
-    setIncomeSources((prev) => {
-      const newSources = prev.map((s) => (s.id === updated.id ? updated : s));
-      saveIncomeSources(newSources);
-      return newSources;
-    });
+  const updateIncomeSource = useCallback(async (updated: IncomeSource) => {
+    const success = await updateIncomeSourceDB(updated);
+    if (success) {
+      setIncomeSources((prev) =>
+        prev.map((s) => (s.id === updated.id ? updated : s))
+      );
+    }
+    return success;
   }, []);
 
-  const deleteIncomeSource = useCallback((id: string) => {
-    setIncomeSources((prev) => {
-      const filtered = prev.filter((s) => s.id !== id);
-      saveIncomeSources(filtered);
-      return filtered;
-    });
+  const deleteIncomeSource = useCallback(async (id: string) => {
+    const success = await deleteIncomeSourceDB(id);
+    if (success) {
+      setIncomeSources((prev) => prev.filter((s) => s.id !== id));
+    }
+    return success;
   }, []);
 
   // ============================================
   // FIXED COSTS
   // ============================================
 
-  const addFixedCost = useCallback((cost: Omit<FixedCost, 'id'>) => {
-    const newCost: FixedCost = { ...cost, id: generateId() };
-    setFixedCosts((prev) => {
-      const updated = [...prev, newCost];
-      saveFixedCosts(updated);
-      return updated;
-    });
+  const addFixedCost = useCallback(async (cost: Omit<FixedCost, 'id'>) => {
+    const newCost = await addFixedCostDB(cost);
+    if (newCost) {
+      setFixedCosts((prev) => [...prev, newCost]);
+    }
     return newCost;
   }, []);
 
-  const updateFixedCost = useCallback((updated: FixedCost) => {
-    setFixedCosts((prev) => {
-      const newCosts = prev.map((c) => (c.id === updated.id ? updated : c));
-      saveFixedCosts(newCosts);
-      return newCosts;
-    });
+  const updateFixedCost = useCallback(async (updated: FixedCost) => {
+    const success = await updateFixedCostDB(updated);
+    if (success) {
+      setFixedCosts((prev) =>
+        prev.map((c) => (c.id === updated.id ? updated : c))
+      );
+    }
+    return success;
   }, []);
 
-  const deleteFixedCost = useCallback((id: string) => {
-    setFixedCosts((prev) => {
-      const filtered = prev.filter((c) => c.id !== id);
-      saveFixedCosts(filtered);
-      return filtered;
-    });
+  const deleteFixedCost = useCallback(async (id: string) => {
+    const success = await deleteFixedCostDB(id);
+    if (success) {
+      setFixedCosts((prev) => prev.filter((c) => c.id !== id));
+    }
+    return success;
   }, []);
 
   // ============================================
   // VARIABLE COSTS
   // ============================================
 
-  const addVariableCost = useCallback((cost: Omit<VariableCostEstimate, 'id'>) => {
-    const newCost: VariableCostEstimate = { ...cost, id: generateId() };
-    setVariableCosts((prev) => {
-      const updated = [...prev, newCost];
-      saveVariableCosts(updated);
-      return updated;
-    });
+  const addVariableCost = useCallback(async (cost: Omit<VariableCostEstimate, 'id'>) => {
+    const newCost = await addVariableCostDB(cost);
+    if (newCost) {
+      setVariableCosts((prev) => [...prev, newCost]);
+    }
     return newCost;
   }, []);
 
-  const updateVariableCost = useCallback((updated: VariableCostEstimate) => {
-    setVariableCosts((prev) => {
-      const newCosts = prev.map((c) => (c.id === updated.id ? updated : c));
-      saveVariableCosts(newCosts);
-      return newCosts;
-    });
+  const updateVariableCost = useCallback(async (updated: VariableCostEstimate) => {
+    const success = await updateVariableCostDB(updated);
+    if (success) {
+      setVariableCosts((prev) =>
+        prev.map((c) => (c.id === updated.id ? updated : c))
+      );
+    }
+    return success;
   }, []);
 
-  const deleteVariableCost = useCallback((id: string) => {
-    setVariableCosts((prev) => {
-      const filtered = prev.filter((c) => c.id !== id);
-      saveVariableCosts(filtered);
-      return filtered;
-    });
+  const deleteVariableCost = useCallback(async (id: string) => {
+    const success = await deleteVariableCostDB(id);
+    if (success) {
+      setVariableCosts((prev) => prev.filter((c) => c.id !== id));
+    }
+    return success;
   }, []);
 
   // ============================================
   // DEBTS
   // ============================================
 
-  const addDebt = useCallback((debt: Omit<Debt, 'id'>) => {
-    const newDebt: Debt = { ...debt, id: generateId() };
-    setDebts((prev) => {
-      const updated = [...prev, newDebt];
-      saveDebts(updated);
-      return updated;
-    });
+  const addDebt = useCallback(async (debt: Omit<Debt, 'id'>) => {
+    const newDebt = await addDebtDB(debt);
+    if (newDebt) {
+      setDebts((prev) => [...prev, newDebt]);
+    }
     return newDebt;
   }, []);
 
-  const updateDebt = useCallback((updated: Debt) => {
-    setDebts((prev) => {
-      const newDebts = prev.map((d) => (d.id === updated.id ? updated : d));
-      saveDebts(newDebts);
-      return newDebts;
-    });
+  const updateDebt = useCallback(async (updated: Debt) => {
+    const success = await updateDebtDB(updated);
+    if (success) {
+      setDebts((prev) =>
+        prev.map((d) => (d.id === updated.id ? updated : d))
+      );
+    }
+    return success;
   }, []);
 
-  const deleteDebt = useCallback((id: string) => {
-    setDebts((prev) => {
-      const filtered = prev.filter((d) => d.id !== id);
-      saveDebts(filtered);
-      return filtered;
-    });
+  const deleteDebt = useCallback(async (id: string) => {
+    const success = await deleteDebtDB(id);
+    if (success) {
+      setDebts((prev) => prev.filter((d) => d.id !== id));
+    }
+    return success;
   }, []);
 
   // ============================================
   // ASSETS
   // ============================================
 
-  const updateAssets = useCallback((updated: Assets) => {
-    setAssets(updated);
-    saveAssets(updated);
+  const updateAssets = useCallback(async (updated: Assets) => {
+    const success = await saveAssetsDB(updated);
+    if (success) {
+      setAssets(updated);
+    }
+    return success;
   }, []);
 
   // ============================================
@@ -228,23 +248,19 @@ export function useFinancialProfile() {
     return availableIncome / monthlyIncome;
   }, [availableIncome, monthlyIncome]);
 
-  // Financial Health Score (0-100)
   const healthScore = useMemo(() => {
     let score = 50;
 
-    // Savings rate contribution (up to +25)
     if (savingsRate >= 0.2) score += 25;
     else if (savingsRate >= 0.1) score += 15;
     else if (savingsRate > 0) score += 5;
     else score -= 10;
 
-    // Debt-to-income ratio (up to +15)
     if (debtToIncomeRatio === 0) score += 15;
     else if (debtToIncomeRatio <= 0.2) score += 10;
     else if (debtToIncomeRatio <= 0.35) score += 5;
     else score -= 10;
 
-    // Emergency fund (3+ months = +10)
     const monthlyExpenses = monthlyFixedCosts + monthlyVariableCosts;
     const emergencyMonths = monthlyExpenses > 0 ? assets.savings / monthlyExpenses : 0;
     if (emergencyMonths >= 6) score += 10;
@@ -255,38 +271,25 @@ export function useFinancialProfile() {
   }, [savingsRate, debtToIncomeRatio, monthlyFixedCosts, monthlyVariableCosts, assets.savings]);
 
   return {
-    // Data
     incomeSources,
     fixedCosts,
     variableCosts,
     debts,
     assets,
     isLoading,
-
-    // Income Source Actions
     addIncomeSource,
     updateIncomeSource,
     deleteIncomeSource,
-
-    // Fixed Cost Actions
     addFixedCost,
     updateFixedCost,
     deleteFixedCost,
-
-    // Variable Cost Actions
     addVariableCost,
     updateVariableCost,
     deleteVariableCost,
-
-    // Debt Actions
     addDebt,
     updateDebt,
     deleteDebt,
-
-    // Assets Actions
     updateAssets,
-
-    // Computed Values
     monthlyIncome,
     monthlyFixedCosts,
     monthlyVariableCosts,
@@ -298,5 +301,6 @@ export function useFinancialProfile() {
     debtToIncomeRatio,
     savingsRate,
     healthScore,
+    refresh: loadData,
   };
 }

@@ -2,49 +2,53 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Budget } from '@/lib/types';
-import { getBudgets, saveBudgets, initializeStorage } from '@/lib/storage';
-import { generateId, getCurrentMonthISO } from '@/lib/utils';
+import {
+  getBudgets,
+  addBudget as addBudgetDB,
+  updateBudget as updateBudgetDB,
+  deleteBudget as deleteBudgetDB,
+} from '@/lib/supabase-storage';
+import { getCurrentMonthISO } from '@/lib/utils';
 
 export function useBudgets() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    initializeStorage();
-    const data = getBudgets();
+  const loadBudgets = useCallback(async () => {
+    setIsLoading(true);
+    const data = await getBudgets();
     setBudgets(data);
     setIsLoading(false);
   }, []);
 
-  const addBudget = useCallback((budget: Omit<Budget, 'id'>) => {
-    const newBudget: Budget = {
-      ...budget,
-      id: generateId(),
-    };
-    setBudgets((prev) => {
-      const updated = [...prev, newBudget];
-      saveBudgets(updated);
-      return updated;
-    });
+  useEffect(() => {
+    loadBudgets();
+  }, [loadBudgets]);
+
+  const addBudget = useCallback(async (budget: Omit<Budget, 'id'>) => {
+    const newBudget = await addBudgetDB(budget);
+    if (newBudget) {
+      setBudgets((prev) => [...prev, newBudget]);
+    }
     return newBudget;
   }, []);
 
-  const updateBudget = useCallback((updated: Budget) => {
-    setBudgets((prev) => {
-      const newBudgets = prev.map((b) =>
-        b.id === updated.id ? updated : b
+  const updateBudget = useCallback(async (updated: Budget) => {
+    const success = await updateBudgetDB(updated);
+    if (success) {
+      setBudgets((prev) =>
+        prev.map((b) => (b.id === updated.id ? updated : b))
       );
-      saveBudgets(newBudgets);
-      return newBudgets;
-    });
+    }
+    return success;
   }, []);
 
-  const deleteBudget = useCallback((id: string) => {
-    setBudgets((prev) => {
-      const filtered = prev.filter((b) => b.id !== id);
-      saveBudgets(filtered);
-      return filtered;
-    });
+  const deleteBudget = useCallback(async (id: string) => {
+    const success = await deleteBudgetDB(id);
+    if (success) {
+      setBudgets((prev) => prev.filter((b) => b.id !== id));
+    }
+    return success;
   }, []);
 
   const getBudgetsByMonth = useCallback(
@@ -67,5 +71,6 @@ export function useBudgets() {
     deleteBudget,
     getBudgetsByMonth,
     getCurrentMonthBudgets,
+    refresh: loadBudgets,
   };
 }
