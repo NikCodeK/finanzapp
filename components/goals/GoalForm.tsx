@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Goal, GoalType, GoalStatus, GOAL_TYPES, Debt } from '@/lib/types';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -13,6 +13,7 @@ interface GoalFormProps {
   initialData?: Goal | null;
   year: number;
   debts?: Debt[];
+  monthlyIncome?: number;
 }
 
 export default function GoalForm({
@@ -21,6 +22,7 @@ export default function GoalForm({
   initialData,
   year,
   debts = [],
+  monthlyIncome = 0,
 }: GoalFormProps) {
   const [name, setName] = useState(initialData?.name || '');
   const [type, setType] = useState<GoalType>(initialData?.type || 'sparen');
@@ -34,6 +36,16 @@ export default function GoalForm({
   const [priority, setPriority] = useState<1 | 2 | 3>(initialData?.priority || 2);
   const [linkedDebtId, setLinkedDebtId] = useState(initialData?.linkedDebtId || '');
   const [note, setNote] = useState(initialData?.note || '');
+
+  const isIncomeGoal = type === 'einkommen';
+
+  // Auto-fill startAmount with current income when creating new income goal
+  useEffect(() => {
+    if (isIncomeGoal && !initialData && monthlyIncome > 0) {
+      setStartAmount(monthlyIncome.toString());
+      setCurrentAmount(monthlyIncome.toString());
+    }
+  }, [isIncomeGoal, initialData, monthlyIncome]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,40 +112,72 @@ export default function GoalForm({
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Input
-          label="Startbetrag"
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="0.00"
-          value={startAmount}
-          onChange={(e) => setStartAmount(e.target.value)}
-          required
-        />
+      {isIncomeGoal ? (
+        <>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+            Dein aktuelles Einkommen wird automatisch aus "Meine Finanzen" übernommen.
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Start-Einkommen"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={startAmount}
+              onChange={(e) => setStartAmount(e.target.value)}
+              required
+              disabled={!initialData}
+            />
 
-        <Input
-          label="Aktueller Betrag"
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="0.00"
-          value={currentAmount}
-          onChange={(e) => setCurrentAmount(e.target.value)}
-          required
-        />
+            <Input
+              label="Ziel-Einkommen"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={targetAmount}
+              onChange={(e) => setTargetAmount(e.target.value)}
+              required
+            />
+          </div>
+        </>
+      ) : (
+        <div className="grid grid-cols-3 gap-4">
+          <Input
+            label="Startbetrag"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            value={startAmount}
+            onChange={(e) => setStartAmount(e.target.value)}
+            required
+          />
 
-        <Input
-          label="Zielbetrag"
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="0.00"
-          value={targetAmount}
-          onChange={(e) => setTargetAmount(e.target.value)}
-          required
-        />
-      </div>
+          <Input
+            label="Aktueller Betrag"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            value={currentAmount}
+            onChange={(e) => setCurrentAmount(e.target.value)}
+            required
+          />
+
+          <Input
+            label="Zielbetrag"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            value={targetAmount}
+            onChange={(e) => setTargetAmount(e.target.value)}
+            required
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <Input

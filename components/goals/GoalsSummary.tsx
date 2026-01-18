@@ -6,16 +6,24 @@ import { CheckCircleIcon, ClockIcon, FlagIcon } from '@heroicons/react/24/outlin
 
 interface GoalsSummaryProps {
   goals: Goal[];
-  getGoalProgress: (goal: Goal) => number;
+  getGoalProgress: (goal: Goal, currentIncome?: number) => number;
+  monthlyIncome?: number;
 }
 
-export default function GoalsSummary({ goals, getGoalProgress }: GoalsSummaryProps) {
+export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: GoalsSummaryProps) {
   const activeGoals = goals.filter((g) => g.status === 'aktiv');
   const achievedGoals = goals.filter((g) => g.status === 'erreicht');
   const pausedGoals = goals.filter((g) => g.status === 'pausiert');
 
+  // For income goals, use monthlyIncome; for others, use goal.currentAmount
+  const getEffectiveCurrentAmount = (goal: Goal) => {
+    return goal.type === 'einkommen' && monthlyIncome !== undefined
+      ? monthlyIncome
+      : goal.currentAmount;
+  };
+
   const totalTarget = activeGoals.reduce((sum, g) => sum + g.targetAmount, 0);
-  const totalCurrent = activeGoals.reduce((sum, g) => sum + g.currentAmount, 0);
+  const totalCurrent = activeGoals.reduce((sum, g) => sum + getEffectiveCurrentAmount(g), 0);
   const totalRemaining = totalTarget - totalCurrent;
 
   const goalsOnTrack = activeGoals.filter((goal) => {
@@ -25,7 +33,7 @@ export default function GoalsSummary({ goals, getGoalProgress }: GoalsSummaryPro
     const totalDays = (deadline.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
     const daysPassed = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
     const expectedProgress = daysPassed / totalDays;
-    const actualProgress = getGoalProgress(goal);
+    const actualProgress = getGoalProgress(goal, monthlyIncome);
     return actualProgress >= expectedProgress * 0.9;
   }).length;
 

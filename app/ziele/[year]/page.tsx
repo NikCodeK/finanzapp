@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useGoals } from '@/hooks/useGoals';
 import { useDebts } from '@/hooks/useDebts';
+import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -33,6 +34,7 @@ export default function ZielePage() {
   } = useGoals(year);
 
   const { debts } = useDebts();
+  const { monthlyIncome } = useFinancialProfile();
 
   const filteredGoals = filterType === 'alle'
     ? goals
@@ -109,7 +111,7 @@ export default function ZielePage() {
       </div>
 
       {/* Summary */}
-      <GoalsSummary goals={goals} getGoalProgress={getGoalProgress} />
+      <GoalsSummary goals={goals} getGoalProgress={getGoalProgress} monthlyIncome={monthlyIncome} />
 
       {/* Filter */}
       <div className="flex gap-2 flex-wrap">
@@ -168,6 +170,7 @@ export default function ZielePage() {
               onEdit={handleEditClick}
               onDelete={deleteGoal}
               onUpdateProgress={updateGoalProgress}
+              currentIncome={monthlyIncome}
             />
           ))}
         </div>
@@ -205,6 +208,7 @@ export default function ZielePage() {
           initialData={editingGoal}
           year={year}
           debts={debts}
+          monthlyIncome={monthlyIncome}
         />
       </Modal>
     </div>

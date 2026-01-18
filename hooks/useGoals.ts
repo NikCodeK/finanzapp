@@ -72,9 +72,14 @@ export function useGoals(year?: number) {
     return updateGoal(updated);
   }, [goals, updateGoal]);
 
-  const getGoalProgress = useCallback((goal: Goal) => {
-    const progress = goal.targetAmount > 0
-      ? (goal.currentAmount - goal.startAmount) / (goal.targetAmount - goal.startAmount)
+  const getGoalProgress = useCallback((goal: Goal, currentIncome?: number) => {
+    // For income goals, use live income from financial profile if provided
+    const effectiveCurrentAmount = goal.type === 'einkommen' && currentIncome !== undefined
+      ? currentIncome
+      : goal.currentAmount;
+    const range = goal.targetAmount - goal.startAmount;
+    const progress = range > 0
+      ? (effectiveCurrentAmount - goal.startAmount) / range
       : 0;
     return Math.min(Math.max(progress, 0), 1);
   }, []);
