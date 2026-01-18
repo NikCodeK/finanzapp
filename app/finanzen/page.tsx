@@ -54,6 +54,9 @@ export default function FinanzenPage() {
     deleteDebt,
     updateAssets,
     monthlyIncome,
+    monthlyIncomeWithoutBonus,
+    monthlyBonusIncome,
+    quarterlyBonusOverview,
     monthlyFixedCosts,
     monthlyVariableCosts,
     totalDebt,
@@ -238,6 +241,9 @@ export default function FinanzenPage() {
             <CardHeader title="Finanzübersicht" subtitle="Zusammenfassung deiner finanziellen Situation" />
             <FinancialSummaryCard
               monthlyIncome={monthlyIncome}
+              monthlyIncomeWithoutBonus={monthlyIncomeWithoutBonus}
+              monthlyBonusIncome={monthlyBonusIncome}
+              quarterlyBonusOverview={quarterlyBonusOverview}
               monthlyFixedCosts={monthlyFixedCosts}
               monthlyVariableCosts={monthlyVariableCosts}
               monthlyDebtPayments={monthlyDebtPayments}
@@ -286,7 +292,11 @@ export default function FinanzenPage() {
                         )}
                       </div>
                       <p className="text-sm text-slate-500">
-                        {source.frequency === 'jaehrlich' ? 'Jährlich' : 'Monatlich'}
+                        {source.frequency === 'jaehrlich'
+                          ? 'Jährlich'
+                          : source.frequency === 'quartalsbonus'
+                          ? `Quartalsbonus (${source.confirmedQuarters ? Object.values(source.confirmedQuarters).filter(Boolean).length : 0}/4 bestätigt)`
+                          : 'Monatlich'}
                         {source.note && ` - ${source.note}`}
                       </p>
                     </div>

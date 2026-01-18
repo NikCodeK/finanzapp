@@ -194,25 +194,61 @@ export function useFinancialProfile() {
   // COMPUTED VALUES
   // ============================================
 
-  const monthlyIncome = useMemo(() => {
+  // Basis-Einkommen OHNE Quartalsbonus
+  const monthlyIncomeWithoutBonus = useMemo(() => {
     return incomeSources
-      .filter((s) => s.isActive)
+      .filter((s) => s.isActive && s.frequency !== 'quartalsbonus')
       .reduce((sum, s) => {
-        let monthly = 0;
-        if (s.frequency === 'monatlich') {
-          monthly = s.amount;
-        } else if (s.frequency === 'jaehrlich') {
-          monthly = s.amount / 12;
-        } else if (s.frequency === 'quartalsbonus') {
-          // Nur bestätigte Quartale zählen
-          const confirmedCount = s.confirmedQuarters
-            ? Object.values(s.confirmedQuarters).filter(Boolean).length
-            : 0;
-          const yearlyBonus = s.amount * confirmedCount;
-          monthly = yearlyBonus / 12;
-        }
+        const monthly = s.frequency === 'jaehrlich' ? s.amount / 12 : s.amount;
         return sum + monthly;
       }, 0);
+  }, [incomeSources]);
+
+  // Nur der Quartalsbonus-Anteil (bestätigte Quartale)
+  const monthlyBonusIncome = useMemo(() => {
+    return incomeSources
+      .filter((s) => s.isActive && s.frequency === 'quartalsbonus')
+      .reduce((sum, s) => {
+        const confirmedCount = s.confirmedQuarters
+          ? Object.values(s.confirmedQuarters).filter(Boolean).length
+          : 0;
+        const yearlyBonus = s.amount * confirmedCount;
+        return sum + (yearlyBonus / 12);
+      }, 0);
+  }, [incomeSources]);
+
+  // Gesamt-Einkommen MIT Bonus
+  const monthlyIncome = useMemo(() => {
+    return monthlyIncomeWithoutBonus + monthlyBonusIncome;
+  }, [monthlyIncomeWithoutBonus, monthlyBonusIncome]);
+
+  // Quartalsbonus-Übersicht für Retrospektive
+  const quarterlyBonusOverview = useMemo(() => {
+    const bonusSources = incomeSources.filter(
+      (s) => s.isActive && s.frequency === 'quartalsbonus'
+    );
+
+    if (bonusSources.length === 0) return null;
+
+    const totalBonusPerQuarter = bonusSources.reduce((sum, s) => sum + s.amount, 0);
+    const confirmedQuarters = {
+      Q1: bonusSources.every((s) => s.confirmedQuarters?.Q1),
+      Q2: bonusSources.every((s) => s.confirmedQuarters?.Q2),
+      Q3: bonusSources.every((s) => s.confirmedQuarters?.Q3),
+      Q4: bonusSources.every((s) => s.confirmedQuarters?.Q4),
+    };
+    const confirmedCount = Object.values(confirmedQuarters).filter(Boolean).length;
+    const totalConfirmedBonus = totalBonusPerQuarter * confirmedCount;
+    const totalPotentialBonus = totalBonusPerQuarter * 4;
+
+    return {
+      bonusSources,
+      totalBonusPerQuarter,
+      confirmedQuarters,
+      confirmedCount,
+      totalConfirmedBonus,
+      totalPotentialBonus,
+    };
   }, [incomeSources]);
 
   const monthlyFixedCosts = useMemo(() => {
@@ -303,6 +339,9 @@ export function useFinancialProfile() {
     deleteDebt,
     updateAssets,
     monthlyIncome,
+    monthlyIncomeWithoutBonus,
+    monthlyBonusIncome,
+    quarterlyBonusOverview,
     monthlyFixedCosts,
     monthlyVariableCosts,
     totalDebt,
