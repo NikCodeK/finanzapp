@@ -211,8 +211,11 @@ export default function Dashboard() {
           />
           <div className="space-y-3">
             {activeGoals.slice(0, 3).map((goal) => {
-              const progress = goal.targetAmount > 0
-                ? (goal.currentAmount - goal.startAmount) / (goal.targetAmount - goal.startAmount)
+              // For income goals, use current monthlyIncome from profile
+              const effectiveCurrentAmount = goal.type === 'einkommen' ? monthlyIncome : goal.currentAmount;
+              const range = goal.targetAmount - goal.startAmount;
+              const progress = range > 0
+                ? (effectiveCurrentAmount - goal.startAmount) / range
                 : 0;
               return (
                 <div key={goal.id} className="p-4 bg-slate-50 rounded-lg">
@@ -222,16 +225,17 @@ export default function Dashboard() {
                       <span className="font-medium text-slate-900">{goal.name}</span>
                     </div>
                     <span className="text-sm text-slate-500">
-                      {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
+                      {formatCurrency(effectiveCurrentAmount)} / {formatCurrency(goal.targetAmount)}
+                      {goal.type === 'einkommen' && '/M'}
                     </span>
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-2">
                     <div
                       className="bg-indigo-500 h-2 rounded-full transition-all"
-                      style={{ width: `${Math.min(progress * 100, 100)}%` }}
+                      style={{ width: `${Math.min(Math.max(progress * 100, 0), 100)}%` }}
                     />
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">{Math.round(progress * 100)}% erreicht</p>
+                  <p className="text-xs text-slate-500 mt-1">{Math.round(Math.max(progress * 100, 0))}% erreicht</p>
                 </div>
               );
             })}

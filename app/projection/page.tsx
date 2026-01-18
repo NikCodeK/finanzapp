@@ -128,9 +128,19 @@ export default function ProjectionPage() {
     return goals
       .filter((g) => g.status === 'aktiv')
       .map((goal) => {
-        const remaining = goal.targetAmount - goal.currentAmount;
+        // For income goals, use current monthlyIncome from profile
+        const effectiveCurrentAmount = goal.type === 'einkommen' ? monthlyIncome : goal.currentAmount;
+        const remaining = goal.targetAmount - effectiveCurrentAmount;
+
+        // For income goals, progress is based on income increase, not savings
+        const isIncomeGoal = goal.type === 'einkommen';
         const monthlySavings = availableIncome > 0 ? availableIncome : 0;
-        const monthsToGoal = monthlySavings > 0 ? remaining / monthlySavings : Infinity;
+
+        // Income goals can't be projected the same way - they depend on salary increases
+        const monthsToGoal = isIncomeGoal
+          ? Infinity // Income goals can't be time-projected
+          : (monthlySavings > 0 ? remaining / monthlySavings : Infinity);
+
         const deadline = new Date(goal.deadlineISO);
         const now = new Date();
         const monthsUntilDeadline =
@@ -140,21 +150,29 @@ export default function ProjectionPage() {
         const projectedCompletionDate = new Date();
         projectedCompletionDate.setMonth(projectedCompletionDate.getMonth() + Math.ceil(monthsToGoal));
 
-        const onTrack = monthsToGoal <= monthsUntilDeadline;
-        const projectedAmount = goal.currentAmount + monthlySavings * Math.min(monthsUntilDeadline, 12);
+        // For income goals, check if current income already meets target
+        const onTrack = isIncomeGoal
+          ? effectiveCurrentAmount >= goal.targetAmount
+          : monthsToGoal <= monthsUntilDeadline;
+
+        const projectedAmount = isIncomeGoal
+          ? effectiveCurrentAmount // Income goals don't accumulate
+          : effectiveCurrentAmount + monthlySavings * Math.min(monthsUntilDeadline, 12);
 
         return {
           goal,
+          effectiveCurrentAmount,
           remaining,
           monthsToGoal: Math.ceil(monthsToGoal),
           monthsUntilDeadline,
           projectedCompletionDate,
           onTrack,
           projectedAmount: Math.min(projectedAmount, goal.targetAmount),
-          willComplete: monthsToGoal <= 12,
+          willComplete: isIncomeGoal ? effectiveCurrentAmount >= goal.targetAmount : monthsToGoal <= 12,
+          isIncomeGoal,
         };
       });
-  }, [goals, availableIncome]);
+  }, [goals, availableIncome, monthlyIncome]);
 
   if (!mounted || isLoading) {
     return (
@@ -230,12 +248,14 @@ export default function ProjectionPage() {
           <div className="space-y-4">
             {goalProjections.map(({
               goal,
+              effectiveCurrentAmount,
               remaining,
               monthsToGoal,
               monthsUntilDeadline,
               projectedCompletionDate,
               onTrack,
               willComplete,
+              isIncomeGoal,
             }) => (
               <div
                 key={goal.id}
@@ -247,20 +267,27 @@ export default function ProjectionPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="font-medium text-slate-900">{goal.name}</h4>
+                      {isIncomeGoal && (
+                        <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+                          Einkommen
+                        </span>
+                      )}
                       {onTrack ? (
                         <span className="flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
                           <CheckCircleIcon className="h-3 w-3" />
-                          Auf Kurs
+                          {isIncomeGoal ? 'Ziel erreicht' : 'Auf Kurs'}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
                           <ExclamationTriangleIcon className="h-3 w-3" />
-                          Hinter Plan
+                          {isIncomeGoal ? 'Noch nicht erreicht' : 'Hinter Plan'}
                         </span>
                       )}
                     </div>
                     <p className="text-sm text-slate-500">
-                      Noch {formatCurrency(remaining)} bis zum Ziel
+                      {isIncomeGoal
+                        ? `Noch ${formatCurrency(Math.max(remaining, 0))}/Monat zu erhöhen`
+                        : `Noch ${formatCurrency(remaining)} bis zum Ziel`}
                     </p>
                   </div>
                   <div className="text-right">
@@ -270,7 +297,7 @@ export default function ProjectionPage() {
                 </div>
 
                 <GoalProgressBar
-                  currentAmount={goal.currentAmount}
+                  currentAmount={effectiveCurrentAmount}
                   targetAmount={goal.targetAmount}
                   startAmount={goal.startAmount}
                   size="sm"
@@ -282,25 +309,39 @@ export default function ProjectionPage() {
                     <p className="text-slate-500">Monate bis Deadline</p>
                     <p className="font-medium">{monthsUntilDeadline}</p>
                   </div>
+                  {isIncomeGoal ? (
+                    <div>
+                      <p className="text-slate-500">Aktuelles Einkommen</p>
+                      <p className="font-medium text-indigo-600">{formatCurrency(effectiveCurrentAmount)}/M</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-slate-500">Monate bis Zielerreichung</p>
+                      <p className={`font-medium ${monthsToGoal > monthsUntilDeadline ? 'text-amber-600' : 'text-emerald-600'}`}>
+                        {monthsToGoal === Infinity ? '-' : monthsToGoal}
+                      </p>
+                    </div>
+                  )}
+                  {isIncomeGoal ? (
+                    <div>
+                      <p className="text-slate-500">Ziel-Einkommen</p>
+                      <p className="font-medium">{formatCurrency(goal.targetAmount)}/M</p>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-slate-500">Geschätztes Datum</p>
+                      <p className="font-medium">
+                        {monthsToGoal === Infinity
+                          ? 'Nicht möglich'
+                          : projectedCompletionDate.toLocaleDateString('de-DE', {
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                      </p>
+                    </div>
+                  )}
                   <div>
-                    <p className="text-slate-500">Monate bis Zielerreichung</p>
-                    <p className={`font-medium ${monthsToGoal > monthsUntilDeadline ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {monthsToGoal === Infinity ? '-' : monthsToGoal}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Geschätztes Datum</p>
-                    <p className="font-medium">
-                      {monthsToGoal === Infinity
-                        ? 'Nicht möglich'
-                        : projectedCompletionDate.toLocaleDateString('de-DE', {
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-slate-500">Erreichbar in 12 Mo.</p>
+                    <p className="text-slate-500">{isIncomeGoal ? 'Ziel erreicht' : 'Erreichbar in 12 Mo.'}</p>
                     <p className={`font-medium ${willComplete ? 'text-emerald-600' : 'text-slate-500'}`}>
                       {willComplete ? 'Ja' : 'Nein'}
                     </p>
