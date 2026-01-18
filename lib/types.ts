@@ -171,6 +171,14 @@ export interface Assets {
 export type GoalType = 'sparen' | 'schuldenabbau' | 'investition' | 'notgroschen' | 'anschaffung' | 'einkommen';
 export type GoalStatus = 'aktiv' | 'erreicht' | 'pausiert';
 
+// Meilensteine für Einkommensziele
+export interface IncomeMilestone {
+  id: string;
+  targetAmount: number;            // Ziel-Einkommen für diesen Meilenstein
+  name?: string;                   // Optional: Name des Meilensteins (z.B. "Erste Gehaltserhöhung")
+  reachedAtISO?: string;           // Wann wurde der Meilenstein erreicht?
+}
+
 export interface Goal {
   id: string;
   year: number;                    // 2026
@@ -184,6 +192,7 @@ export interface Goal {
   status: GoalStatus;
   priority: 1 | 2 | 3;
   linkedDebtId?: string;           // Für Schuldenabbau-Ziele
+  milestones?: IncomeMilestone[];  // Meilensteine für Einkommensziele
   note?: string;
 }
 

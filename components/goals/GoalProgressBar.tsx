@@ -1,6 +1,7 @@
 'use client';
 
 import { formatCurrency, formatPercentInt } from '@/lib/utils';
+import { IncomeMilestone } from '@/lib/types';
 
 interface GoalProgressBarProps {
   currentAmount: number;
@@ -8,6 +9,7 @@ interface GoalProgressBarProps {
   startAmount: number;
   showLabels?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  milestones?: IncomeMilestone[];
 }
 
 export default function GoalProgressBar({
@@ -16,6 +18,7 @@ export default function GoalProgressBar({
   startAmount,
   showLabels = true,
   size = 'md',
+  milestones,
 }: GoalProgressBarProps) {
   const range = targetAmount - startAmount;
   const progress = range > 0 ? (currentAmount - startAmount) / range : 0;
@@ -35,13 +38,37 @@ export default function GoalProgressBar({
     return 'bg-red-500';
   };
 
+  // Calculate milestone positions as percentages
+  const milestonePositions = milestones?.map(m => ({
+    ...m,
+    position: range > 0 ? ((m.targetAmount - startAmount) / range) * 100 : 0,
+    isReached: currentAmount >= m.targetAmount,
+  })) || [];
+
   return (
     <div className="w-full">
-      <div className={`w-full bg-slate-200 rounded-full ${heightClasses[size]}`}>
+      <div className={`relative w-full bg-slate-200 rounded-full ${heightClasses[size]}`}>
         <div
           className={`${getColorClass()} ${heightClasses[size]} rounded-full transition-all duration-500`}
           style={{ width: `${progressPercent * 100}%` }}
         />
+        {/* Milestone markers */}
+        {milestonePositions.map((m, index) => (
+          <div
+            key={m.id}
+            className="absolute top-1/2 -translate-y-1/2"
+            style={{ left: `${Math.min(m.position, 100)}%` }}
+          >
+            <div
+              className={`w-2 h-2 rounded-full border-2 ${
+                m.isReached
+                  ? 'bg-emerald-500 border-emerald-600'
+                  : 'bg-white border-slate-400'
+              }`}
+              title={`${m.name || `Meilenstein ${index + 1}`}: ${formatCurrency(m.targetAmount)}`}
+            />
+          </div>
+        ))}
       </div>
       {showLabels && (
         <div className="flex justify-between mt-1 text-xs text-slate-500">

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Goal, GoalType, GoalStatus, GOAL_TYPES, Debt } from '@/lib/types';
+import { Goal, GoalType, GoalStatus, GOAL_TYPES, Debt, IncomeMilestone } from '@/lib/types';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
-import { toDateISO } from '@/lib/utils';
+import { toDateISO, formatCurrency } from '@/lib/utils';
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface GoalFormProps {
   onSave: (goal: Omit<Goal, 'id' | 'createdAtISO'>) => void;
@@ -36,6 +37,9 @@ export default function GoalForm({
   const [priority, setPriority] = useState<1 | 2 | 3>(initialData?.priority || 2);
   const [linkedDebtId, setLinkedDebtId] = useState(initialData?.linkedDebtId || '');
   const [note, setNote] = useState(initialData?.note || '');
+  const [milestones, setMilestones] = useState<IncomeMilestone[]>(
+    initialData?.milestones || []
+  );
 
   const isIncomeGoal = type === 'einkommen';
 
@@ -46,6 +50,39 @@ export default function GoalForm({
       setCurrentAmount(monthlyIncome.toString());
     }
   }, [isIncomeGoal, initialData, monthlyIncome]);
+
+  // Milestone Management
+  const addMilestone = () => {
+    const startVal = parseFloat(startAmount) || 0;
+    const targetVal = parseFloat(targetAmount) || 0;
+    const lastMilestone = milestones.length > 0
+      ? milestones[milestones.length - 1].targetAmount
+      : startVal;
+
+    // Suggest a value between last milestone and target
+    const suggestedAmount = lastMilestone + (targetVal - lastMilestone) / 2;
+
+    const newMilestone: IncomeMilestone = {
+      id: `milestone-${Date.now()}`,
+      targetAmount: Math.round(suggestedAmount / 100) * 100, // Round to nearest 100
+      name: `Meilenstein ${milestones.length + 1}`,
+    };
+    setMilestones([...milestones, newMilestone].sort((a, b) => a.targetAmount - b.targetAmount));
+  };
+
+  const updateMilestone = (id: string, field: 'targetAmount' | 'name', value: string) => {
+    setMilestones(milestones.map(m => {
+      if (m.id !== id) return m;
+      if (field === 'targetAmount') {
+        return { ...m, targetAmount: parseFloat(value) || 0 };
+      }
+      return { ...m, name: value };
+    }).sort((a, b) => a.targetAmount - b.targetAmount));
+  };
+
+  const removeMilestone = (id: string) => {
+    setMilestones(milestones.filter(m => m.id !== id));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +97,7 @@ export default function GoalForm({
       status,
       priority,
       linkedDebtId: linkedDebtId || undefined,
+      milestones: isIncomeGoal && milestones.length > 0 ? milestones : undefined,
       note: note || undefined,
     });
   };
@@ -131,7 +169,7 @@ export default function GoalForm({
             />
 
             <Input
-              label="Ziel-Einkommen"
+              label="Ziel-Einkommen (Endziel)"
               type="number"
               step="0.01"
               min="0"
@@ -140,6 +178,71 @@ export default function GoalForm({
               onChange={(e) => setTargetAmount(e.target.value)}
               required
             />
+          </div>
+
+          {/* Milestones */}
+          <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="font-medium text-slate-900">Meilensteine (optional)</h4>
+                <p className="text-xs text-slate-500">Zwischenziele für deine Einkommenserhöhung</p>
+              </div>
+              <button
+                type="button"
+                onClick={addMilestone}
+                className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Hinzufügen
+              </button>
+            </div>
+
+            {milestones.length === 0 ? (
+              <p className="text-sm text-slate-400 italic text-center py-2">
+                Keine Meilensteine - Füge Zwischenziele hinzu
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {milestones.map((milestone, index) => (
+                  <div key={milestone.id} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-xs text-slate-400 w-6">{index + 1}.</span>
+                    <input
+                      type="text"
+                      value={milestone.name || ''}
+                      onChange={(e) => updateMilestone(milestone.id, 'name', e.target.value)}
+                      placeholder="Name (optional)"
+                      className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <input
+                      type="number"
+                      step="100"
+                      min="0"
+                      value={milestone.targetAmount}
+                      onChange={(e) => updateMilestone(milestone.id, 'targetAmount', e.target.value)}
+                      className="w-28 px-2 py-1 text-sm border border-slate-200 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                    <span className="text-xs text-slate-500">€</span>
+                    <button
+                      type="button"
+                      onClick={() => removeMilestone(milestone.id)}
+                      className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {milestones.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-500">
+                <div className="flex justify-between">
+                  <span>Start: {formatCurrency(parseFloat(startAmount) || 0)}</span>
+                  <span>→ {milestones.map(m => formatCurrency(m.targetAmount)).join(' → ')}</span>
+                  <span>→ Ziel: {formatCurrency(parseFloat(targetAmount) || 0)}</span>
+                </div>
+              </div>
+            )}
           </div>
         </>
       ) : (

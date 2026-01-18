@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Goal, GOAL_TYPES } from '@/lib/types';
+import { Goal, GOAL_TYPES, IncomeMilestone } from '@/lib/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PencilIcon, TrashIcon, CheckCircleIcon, PauseCircleIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import GoalProgressBar from './GoalProgressBar';
@@ -140,6 +140,7 @@ export default function GoalCard({
           currentAmount={effectiveCurrentAmount}
           targetAmount={goal.targetAmount}
           startAmount={goal.startAmount}
+          milestones={isIncomeGoal ? goal.milestones : undefined}
         />
       </div>
 
@@ -170,6 +171,48 @@ export default function GoalCard({
           </div>
         )}
       </div>
+
+      {/* Milestones for Income Goals */}
+      {isIncomeGoal && goal.milestones && goal.milestones.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          <p className="text-xs font-medium text-slate-500 mb-2">Meilensteine</p>
+          <div className="space-y-2">
+            {goal.milestones.map((milestone, index) => {
+              const isReached = effectiveCurrentAmount >= milestone.targetAmount;
+              const isNext = !isReached && (index === 0 || effectiveCurrentAmount >= goal.milestones![index - 1].targetAmount);
+              return (
+                <div
+                  key={milestone.id}
+                  className={`flex items-center justify-between p-2 rounded-lg text-sm ${
+                    isReached
+                      ? 'bg-emerald-50 border border-emerald-200'
+                      : isNext
+                      ? 'bg-indigo-50 border border-indigo-200'
+                      : 'bg-slate-50 border border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {isReached ? (
+                      <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <div className={`h-4 w-4 rounded-full border-2 ${isNext ? 'border-indigo-400' : 'border-slate-300'}`} />
+                    )}
+                    <span className={isReached ? 'text-emerald-700' : isNext ? 'text-indigo-700' : 'text-slate-600'}>
+                      {milestone.name || `Meilenstein ${index + 1}`}
+                    </span>
+                  </div>
+                  <span className={`font-medium ${isReached ? 'text-emerald-600' : isNext ? 'text-indigo-600' : 'text-slate-500'}`}>
+                    {formatCurrency(milestone.targetAmount)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 text-xs text-slate-500">
+            {goal.milestones.filter(m => effectiveCurrentAmount >= m.targetAmount).length} von {goal.milestones.length} erreicht
+          </div>
+        </div>
+      )}
 
       {/* Quick Update */}
       {goal.status === 'aktiv' && (
