@@ -34,7 +34,7 @@ export default function ZielePage() {
   } = useGoals(year);
 
   const { debts } = useDebts();
-  const { monthlyIncome } = useFinancialProfile();
+  const { monthlyIncome, isLoading: isProfileLoading } = useFinancialProfile();
 
   const filteredGoals = filterType === 'alle'
     ? goals
@@ -72,7 +72,7 @@ export default function ZielePage() {
     handleCloseModal();
   };
 
-  if (isLoading) {
+  if (isLoading || isProfileLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
