@@ -1,34 +1,43 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTransactions } from '@/hooks/useTransactions';
-import { useWeeklyReports } from '@/hooks/useWeeklyReports';
+import { useFinancialProfile } from '@/hooks/useFinancialProfile';
+import { useGoals } from '@/hooks/useGoals';
 import KPICard from '@/components/KPICard';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import TransactionTable from '@/components/TransactionTable';
-import IncomeExpenseBar from '@/components/charts/IncomeExpenseBar';
-import CategoryPie from '@/components/charts/CategoryPie';
-import NetWorthLine from '@/components/charts/NetWorthLine';
 import Link from 'next/link';
 import {
   BanknotesIcon,
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   WalletIcon,
+  FlagIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency, getCurrentMonthISO, formatMonth } from '@/lib/utils';
-import {
-  computeMonthlySummary,
-  getMonthlyIncomeExpenseData,
-  calculateNetWorthOverTime,
-  getTopCategories,
-  getTransactionsForMonth,
-} from '@/lib/calculations';
+import { formatCurrency } from '@/lib/utils';
 
 export default function Dashboard() {
-  const { transactions, isLoading } = useTransactions();
-  const { reports } = useWeeklyReports();
+  const {
+    incomeSources,
+    monthlyIncome,
+    monthlyIncomeWithoutBonus,
+    monthlyBonusIncome,
+    quarterlyBonusOverview,
+    monthlyFixedCosts,
+    monthlyVariableCosts,
+    monthlyDebtPayments,
+    totalDebt,
+    totalAssets,
+    netWorth,
+    availableIncome,
+    savingsRate,
+    healthScore,
+    isLoading,
+  } = useFinancialProfile();
+
+  const { goals } = useGoals(new Date().getFullYear());
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -48,18 +57,8 @@ export default function Dashboard() {
     );
   }
 
-  const currentMonthISO = getCurrentMonthISO();
-  const monthlySummary = computeMonthlySummary(transactions, currentMonthISO);
-  const incomeExpenseData = getMonthlyIncomeExpenseData(transactions, 6);
-  const netWorthData = calculateNetWorthOverTime(transactions, 6);
-  const topExpenseCategories = getTopCategories(
-    getTransactionsForMonth(transactions, currentMonthISO),
-    'expense',
-    5
-  );
-  const recentTransactions = [...transactions]
-    .sort((a, b) => b.dateISO.localeCompare(a.dateISO))
-    .slice(0, 5);
+  const totalExpenses = monthlyFixedCosts + monthlyVariableCosts + monthlyDebtPayments;
+  const activeGoals = goals.filter(g => g.status === 'aktiv');
 
   return (
     <div className="space-y-6">
@@ -67,127 +66,206 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 mt-1">
-            Übersicht für {formatMonth(currentMonthISO + '-01')}
-          </p>
+          <p className="text-slate-500 mt-1">Deine finanzielle Übersicht</p>
         </div>
-        <Link href="/transactions">
-          <Button>Neue Transaktion</Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-sm text-slate-500">Health Score</p>
+            <p className={`text-2xl font-bold ${healthScore >= 70 ? 'text-green-600' : healthScore >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+              {healthScore}/100
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard
-          title="Einnahmen"
-          value={formatCurrency(monthlySummary.income)}
-          subtitle="Dieser Monat"
+          title="Monatl. Einkommen"
+          value={formatCurrency(monthlyIncome)}
+          subtitle={monthlyBonusIncome > 0 ? `inkl. ${formatCurrency(monthlyBonusIncome)} Bonus` : 'Gesamt'}
           variant="income"
           icon={<ArrowTrendingUpIcon className="h-6 w-6" />}
         />
         <KPICard
-          title="Ausgaben"
-          value={formatCurrency(monthlySummary.expenses)}
-          subtitle="Dieser Monat"
+          title="Monatl. Ausgaben"
+          value={formatCurrency(totalExpenses)}
+          subtitle={`Fix: ${formatCurrency(monthlyFixedCosts)}`}
           variant="expense"
           icon={<ArrowTrendingDownIcon className="h-6 w-6" />}
         />
         <KPICard
-          title="Netto"
-          value={formatCurrency(monthlySummary.net)}
-          subtitle="Dieser Monat"
-          variant={monthlySummary.net >= 0 ? 'income' : 'expense'}
+          title="Verfügbar"
+          value={formatCurrency(availableIncome)}
+          subtitle={`Sparquote: ${(savingsRate * 100).toFixed(0)}%`}
+          variant={availableIncome >= 0 ? 'income' : 'expense'}
           icon={<WalletIcon className="h-6 w-6" />}
         />
         <KPICard
-          title="Sparquote"
-          value={`${(monthlySummary.savingsRate * 100).toFixed(1)}%`}
-          subtitle="Dieser Monat"
+          title="Nettovermögen"
+          value={formatCurrency(netWorth)}
+          subtitle={`Vermögen: ${formatCurrency(totalAssets)}`}
+          variant={netWorth >= 0 ? 'income' : 'expense'}
           icon={<BanknotesIcon className="h-6 w-6" />}
         />
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader title="Einnahmen vs. Ausgaben" subtitle="Letzte 6 Monate" />
-          <IncomeExpenseBar data={incomeExpenseData} />
-        </Card>
-
-        <Card>
-          <CardHeader title="Ausgaben nach Kategorie" subtitle="Dieser Monat" />
-          {topExpenseCategories.length > 0 ? (
-            <CategoryPie data={topExpenseCategories} />
-          ) : (
-            <div className="h-[300px] flex items-center justify-center text-slate-500">
-              Keine Ausgaben in diesem Monat
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* Net Worth Chart */}
+      {/* Gehalt Aufschlüsselung */}
       <Card>
         <CardHeader
-          title="Nettovermögen Entwicklung"
-          subtitle="Letzte 6 Monate"
+          title="Gehaltsübersicht"
+          subtitle="Monatliches Einkommen aufgeschlüsselt"
+          action={
+            <Link href="/finanzen">
+              <Button variant="ghost" size="sm">Bearbeiten</Button>
+            </Link>
+          }
         />
-        <NetWorthLine data={netWorthData} />
-      </Card>
-
-      {/* Recent Transactions */}
-      <Card padding="none">
-        <div className="p-6 border-b border-slate-200">
-          <CardHeader
-            title="Letzte Transaktionen"
-            action={
-              <Link href="/transactions">
-                <Button variant="ghost" size="sm">
-                  Alle anzeigen
-                </Button>
-              </Link>
-            }
-          />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-slate-50 rounded-lg p-4">
+            <p className="text-sm text-slate-500">Basis (ohne Bonus)</p>
+            <p className="text-2xl font-bold text-slate-700">{formatCurrency(monthlyIncomeWithoutBonus)}</p>
+          </div>
+          <div className="bg-emerald-50 rounded-lg p-4">
+            <p className="text-sm text-emerald-600">+ Bonus-Anteil</p>
+            <p className="text-2xl font-bold text-emerald-600">{formatCurrency(monthlyBonusIncome)}</p>
+            {quarterlyBonusOverview && (
+              <p className="text-xs text-emerald-500 mt-1">
+                {quarterlyBonusOverview.confirmedCount}/4 Quartale bestätigt
+              </p>
+            )}
+          </div>
+          <div className="bg-green-100 rounded-lg p-4">
+            <p className="text-sm text-green-700 font-medium">Gesamt</p>
+            <p className="text-2xl font-bold text-green-700">{formatCurrency(monthlyIncome)}</p>
+          </div>
         </div>
-        <TransactionTable
-          transactions={recentTransactions}
-          showActions={false}
-        />
+
+        {/* Quartalsbonus Übersicht */}
+        {quarterlyBonusOverview && (
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <p className="text-sm font-medium text-slate-700 mb-3">Quartalsbonus {new Date().getFullYear()}</p>
+            <div className="grid grid-cols-4 gap-2">
+              {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map((quarter) => {
+                const isConfirmed = quarterlyBonusOverview.confirmedQuarters[quarter];
+                return (
+                  <div
+                    key={quarter}
+                    className={`flex flex-col items-center p-3 rounded-lg ${
+                      isConfirmed ? 'bg-green-100' : 'bg-slate-100'
+                    }`}
+                  >
+                    <span className={`text-sm font-bold ${isConfirmed ? 'text-green-700' : 'text-slate-400'}`}>
+                      {quarter}
+                    </span>
+                    {isConfirmed ? (
+                      <CheckCircleIcon className="h-5 w-5 text-green-500 mt-1" />
+                    ) : (
+                      <XCircleIcon className="h-5 w-5 text-slate-300 mt-1" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Jahresbonus: {formatCurrency(quarterlyBonusOverview.totalConfirmedBonus)} von {formatCurrency(quarterlyBonusOverview.totalPotentialBonus)}
+            </p>
+          </div>
+        )}
       </Card>
 
-      {/* Weekly Reports Summary */}
-      {reports.length > 0 && (
+      {/* Ausgaben Übersicht */}
+      <Card>
+        <CardHeader title="Monatliche Ausgaben" subtitle="Aufschlüsselung" />
+        <div className="space-y-3">
+          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+            <span className="text-slate-600">Fixkosten</span>
+            <span className="font-semibold text-slate-900">{formatCurrency(monthlyFixedCosts)}</span>
+          </div>
+          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+            <span className="text-slate-600">Variable Kosten</span>
+            <span className="font-semibold text-slate-900">{formatCurrency(monthlyVariableCosts)}</span>
+          </div>
+          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+            <span className="text-slate-600">Schuldenraten</span>
+            <span className="font-semibold text-slate-900">{formatCurrency(monthlyDebtPayments)}</span>
+          </div>
+          <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border-t-2 border-red-200">
+            <span className="font-medium text-red-700">Gesamt</span>
+            <span className="font-bold text-red-700">{formatCurrency(totalExpenses)}</span>
+          </div>
+        </div>
+      </Card>
+
+      {/* Ziele */}
+      {activeGoals.length > 0 && (
         <Card>
           <CardHeader
-            title="Letzter Wochenbericht"
+            title="Aktive Ziele"
+            subtitle={`${activeGoals.length} Ziele für ${new Date().getFullYear()}`}
             action={
-              <Link href="/weekly">
-                <Button variant="ghost" size="sm">
-                  Alle Berichte
-                </Button>
+              <Link href={`/ziele/${new Date().getFullYear()}`}>
+                <Button variant="ghost" size="sm">Alle Ziele</Button>
               </Link>
             }
           />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-50 rounded-lg p-4">
-              <p className="text-sm text-slate-500">Erkenntnisse</p>
-              <p className="text-slate-900 mt-1">{reports[0].insights || '-'}</p>
-            </div>
-            <div className="bg-slate-50 rounded-lg p-4">
-              <p className="text-sm text-slate-500">Nächste Schritte</p>
-              <p className="text-slate-900 mt-1">
-                {reports[0].nextDecision || '-'}
-              </p>
-            </div>
-            <div className="bg-slate-50 rounded-lg p-4">
-              <p className="text-sm text-slate-500">Stimmung</p>
-              <p className="text-2xl mt-1">
-                {['😞', '😕', '😐', '🙂', '😊'][reports[0].mood - 1]}
-              </p>
-            </div>
+          <div className="space-y-3">
+            {activeGoals.slice(0, 3).map((goal) => {
+              const progress = goal.targetAmount > 0
+                ? (goal.currentAmount - goal.startAmount) / (goal.targetAmount - goal.startAmount)
+                : 0;
+              return (
+                <div key={goal.id} className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <FlagIcon className="h-4 w-4 text-indigo-500" />
+                      <span className="font-medium text-slate-900">{goal.name}</span>
+                    </div>
+                    <span className="text-sm text-slate-500">
+                      {formatCurrency(goal.currentAmount)} / {formatCurrency(goal.targetAmount)}
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2">
+                    <div
+                      className="bg-indigo-500 h-2 rounded-full transition-all"
+                      style={{ width: `${Math.min(progress * 100, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">{Math.round(progress * 100)}% erreicht</p>
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
+
+      {/* Schnellaktionen */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Link href="/finanzen" className="block">
+          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+            <BanknotesIcon className="h-6 w-6 mx-auto text-indigo-500" />
+            <p className="text-sm font-medium text-slate-700 mt-2">Finanzen</p>
+          </div>
+        </Link>
+        <Link href={`/ziele/${new Date().getFullYear()}`} className="block">
+          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+            <FlagIcon className="h-6 w-6 mx-auto text-indigo-500" />
+            <p className="text-sm font-medium text-slate-700 mt-2">Ziele</p>
+          </div>
+        </Link>
+        <Link href="/weekly" className="block">
+          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+            <WalletIcon className="h-6 w-6 mx-auto text-indigo-500" />
+            <p className="text-sm font-medium text-slate-700 mt-2">Wochenbericht</p>
+          </div>
+        </Link>
+        <Link href="/projection" className="block">
+          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+            <ArrowTrendingUpIcon className="h-6 w-6 mx-auto text-indigo-500" />
+            <p className="text-sm font-medium text-slate-700 mt-2">Prognose</p>
+          </div>
+        </Link>
+      </div>
     </div>
   );
 }
