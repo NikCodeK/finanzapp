@@ -198,7 +198,19 @@ export function useFinancialProfile() {
     return incomeSources
       .filter((s) => s.isActive)
       .reduce((sum, s) => {
-        const monthly = s.frequency === 'jaehrlich' ? s.amount / 12 : s.amount;
+        let monthly = 0;
+        if (s.frequency === 'monatlich') {
+          monthly = s.amount;
+        } else if (s.frequency === 'jaehrlich') {
+          monthly = s.amount / 12;
+        } else if (s.frequency === 'quartalsbonus') {
+          // Nur bestätigte Quartale zählen
+          const confirmedCount = s.confirmedQuarters
+            ? Object.values(s.confirmedQuarters).filter(Boolean).length
+            : 0;
+          const yearlyBonus = s.amount * confirmedCount;
+          monthly = yearlyBonus / 12;
+        }
         return sum + monthly;
       }, 0);
   }, [incomeSources]);

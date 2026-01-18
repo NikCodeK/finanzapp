@@ -32,6 +32,15 @@ export default function DebtForm({
   const [monthlyPayment, setMonthlyPayment] = useState(
     initialData?.monthlyPayment.toString() || ''
   );
+  const [isVariablePayment, setIsVariablePayment] = useState(
+    initialData?.isVariablePayment || false
+  );
+  const [minPayment, setMinPayment] = useState(
+    initialData?.minPayment?.toString() || ''
+  );
+  const [maxPayment, setMaxPayment] = useState(
+    initialData?.maxPayment?.toString() || ''
+  );
   const [startDate, setStartDate] = useState(
     initialData?.startDateISO || toDateISO(new Date())
   );
@@ -46,6 +55,9 @@ export default function DebtForm({
       currentBalance: parseFloat(currentBalance) || 0,
       interestRate: parseFloat(interestRate) || 0,
       monthlyPayment: parseFloat(monthlyPayment) || 0,
+      isVariablePayment,
+      minPayment: isVariablePayment && minPayment ? parseFloat(minPayment) : undefined,
+      maxPayment: isVariablePayment && maxPayment ? parseFloat(maxPayment) : undefined,
       startDateISO: startDate,
       note: note || undefined,
     });
@@ -97,29 +109,81 @@ export default function DebtForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Zinssatz (%)"
-          type="number"
-          step="0.01"
-          min="0"
-          max="100"
-          placeholder="0.00"
-          value={interestRate}
-          onChange={(e) => setInterestRate(e.target.value)}
-          required
-        />
+      <Input
+        label="Zinssatz (%)"
+        type="number"
+        step="0.01"
+        min="0"
+        max="100"
+        placeholder="0.00"
+        value={interestRate}
+        onChange={(e) => setInterestRate(e.target.value)}
+        required
+      />
 
-        <Input
-          label="Monatliche Rate"
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="0.00"
-          value={monthlyPayment}
-          onChange={(e) => setMonthlyPayment(e.target.value)}
-          required
-        />
+      {/* Variable Payment Toggle */}
+      <div className="border border-slate-200 rounded-lg p-4 space-y-4">
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="isVariablePayment"
+            checked={isVariablePayment}
+            onChange={(e) => setIsVariablePayment(e.target.checked)}
+            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
+          />
+          <label htmlFor="isVariablePayment" className="ml-2 block text-sm font-medium text-slate-700">
+            Variable Ratenzahlung
+          </label>
+        </div>
+        <p className="text-xs text-slate-500">
+          Aktiviere dies, wenn die monatliche Rate variabel ist (z.B. bei Kreditkarten oder flexiblen Krediten)
+        </p>
+
+        {isVariablePayment ? (
+          <>
+            <Input
+              label="Basis-Rate (typischer Betrag)"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              value={monthlyPayment}
+              onChange={(e) => setMonthlyPayment(e.target.value)}
+              required
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Minimum"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={minPayment}
+                onChange={(e) => setMinPayment(e.target.value)}
+              />
+              <Input
+                label="Maximum"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={maxPayment}
+                onChange={(e) => setMaxPayment(e.target.value)}
+              />
+            </div>
+          </>
+        ) : (
+          <Input
+            label="Monatliche Rate (fest)"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            value={monthlyPayment}
+            onChange={(e) => setMonthlyPayment(e.target.value)}
+            required
+          />
+        )}
       </div>
 
       <Input

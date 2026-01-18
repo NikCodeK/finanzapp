@@ -10,7 +10,8 @@ import {
   Debt,
   Assets,
   Goal,
-  EnhancedWeeklyReport
+  EnhancedWeeklyReport,
+  QuarterlyBonusStatus
 } from './types';
 
 // ============================================
@@ -252,6 +253,7 @@ export async function getIncomeSources(): Promise<IncomeSource[]> {
     amount: parseFloat(row.amount),
     frequency: row.frequency,
     isActive: row.is_active,
+    confirmedQuarters: row.confirmed_quarters as QuarterlyBonusStatus | undefined,
     note: row.note,
   }));
 }
@@ -264,6 +266,7 @@ export async function addIncomeSource(source: Omit<IncomeSource, 'id'>): Promise
       amount: source.amount,
       frequency: source.frequency,
       is_active: source.isActive,
+      confirmed_quarters: source.confirmedQuarters || { Q1: false, Q2: false, Q3: false, Q4: false },
       note: source.note,
     })
     .select()
@@ -280,6 +283,7 @@ export async function addIncomeSource(source: Omit<IncomeSource, 'id'>): Promise
     amount: parseFloat(data.amount),
     frequency: data.frequency,
     isActive: data.is_active,
+    confirmedQuarters: data.confirmed_quarters as QuarterlyBonusStatus | undefined,
     note: data.note,
   };
 }
@@ -292,6 +296,7 @@ export async function updateIncomeSource(source: IncomeSource): Promise<boolean>
       amount: source.amount,
       frequency: source.frequency,
       is_active: source.isActive,
+      confirmed_quarters: source.confirmedQuarters || { Q1: false, Q2: false, Q3: false, Q4: false },
       note: source.note,
     })
     .eq('id', source.id);
@@ -505,6 +510,9 @@ export async function getDebts(): Promise<Debt[]> {
     currentBalance: parseFloat(row.current_balance),
     interestRate: parseFloat(row.interest_rate),
     monthlyPayment: parseFloat(row.monthly_payment),
+    isVariablePayment: row.is_variable_payment || false,
+    minPayment: row.min_payment ? parseFloat(row.min_payment) : undefined,
+    maxPayment: row.max_payment ? parseFloat(row.max_payment) : undefined,
     startDateISO: row.start_date_iso,
     note: row.note,
   }));
@@ -520,6 +528,9 @@ export async function addDebt(debt: Omit<Debt, 'id'>): Promise<Debt | null> {
       current_balance: debt.currentBalance,
       interest_rate: debt.interestRate,
       monthly_payment: debt.monthlyPayment,
+      is_variable_payment: debt.isVariablePayment || false,
+      min_payment: debt.minPayment,
+      max_payment: debt.maxPayment,
       start_date_iso: debt.startDateISO,
       note: debt.note,
     })
@@ -539,6 +550,9 @@ export async function addDebt(debt: Omit<Debt, 'id'>): Promise<Debt | null> {
     currentBalance: parseFloat(data.current_balance),
     interestRate: parseFloat(data.interest_rate),
     monthlyPayment: parseFloat(data.monthly_payment),
+    isVariablePayment: data.is_variable_payment || false,
+    minPayment: data.min_payment ? parseFloat(data.min_payment) : undefined,
+    maxPayment: data.max_payment ? parseFloat(data.max_payment) : undefined,
     startDateISO: data.start_date_iso,
     note: data.note,
   };
@@ -554,6 +568,9 @@ export async function updateDebt(debt: Debt): Promise<boolean> {
       current_balance: debt.currentBalance,
       interest_rate: debt.interestRate,
       monthly_payment: debt.monthlyPayment,
+      is_variable_payment: debt.isVariablePayment || false,
+      min_payment: debt.minPayment,
+      max_payment: debt.maxPayment,
       start_date_iso: debt.startDateISO,
       note: debt.note,
     })

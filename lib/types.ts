@@ -103,18 +103,32 @@ export interface Debt {
   originalAmount: number;          // Ursprünglicher Betrag
   currentBalance: number;          // Aktueller Restbetrag
   interestRate: number;            // Zinssatz (%)
-  monthlyPayment: number;          // Monatliche Rate
+  monthlyPayment: number;          // Monatliche Rate (oder Basis bei variabel)
+  isVariablePayment: boolean;      // Ist die Rate variabel?
+  minPayment?: number;             // Minimale Rate (bei variabel)
+  maxPayment?: number;             // Maximale Rate (bei variabel)
   startDateISO: string;
   note?: string;
 }
 
 // EINNAHMEQUELLEN
+export type IncomeFrequency = 'monatlich' | 'jaehrlich' | 'quartalsbonus';
+
+export interface QuarterlyBonusStatus {
+  Q1: boolean;  // Jan-März
+  Q2: boolean;  // Apr-Juni
+  Q3: boolean;  // Juli-Sept
+  Q4: boolean;  // Okt-Dez
+}
+
 export interface IncomeSource {
   id: string;
-  name: string;                    // z.B. "Gehalt", "Nebenjob"
+  name: string;                    // z.B. "Gehalt", "Nebenjob", "Quartalsbonus"
   amount: number;
-  frequency: 'monatlich' | 'jaehrlich';
+  frequency: IncomeFrequency;
   isActive: boolean;
+  // Für Quartalsbonus: welche Quartale wurden bestätigt/erhalten?
+  confirmedQuarters?: QuarterlyBonusStatus;
   note?: string;
 }
 
