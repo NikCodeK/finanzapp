@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useGoals } from '@/hooks/useGoals';
-import { useFinancialProfile } from '@/hooks/useFinancialProfile';
+import { useSharedFinancialProfile } from '@/contexts/FinancialProfileContext';
 import Card, { CardHeader } from '@/components/ui/Card';
 import GoalProgressBar from '@/components/goals/GoalProgressBar';
 import ProjectionLine from '@/components/charts/ProjectionLine';
@@ -25,7 +25,7 @@ export default function ProjectionPage() {
     totalDebt,
     availableIncome,
     isLoading,
-  } = useFinancialProfile();
+  } = useSharedFinancialProfile();
 
   const [mounted, setMounted] = useState(false);
   const [scenario, setScenario] = useState<'base' | 'best' | 'worst'>('base');

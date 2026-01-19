@@ -11,7 +11,7 @@ import {
   BuildingLibraryIcon,
   WalletIcon,
 } from '@heroicons/react/24/outline';
-import { useFinancialProfile } from '@/hooks/useFinancialProfile';
+import { useSharedFinancialProfile } from '@/contexts/FinancialProfileContext';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -67,7 +67,7 @@ export default function FinanzenPage() {
     debtToIncomeRatio,
     savingsRate,
     healthScore,
-  } = useFinancialProfile();
+  } = useSharedFinancialProfile();
 
   const tabs = [
     { id: 'uebersicht' as TabType, label: 'Übersicht', icon: ChartPieIcon },
@@ -99,11 +99,11 @@ export default function FinanzenPage() {
       case 'einnahmen':
         return (
           <IncomeSourceForm
-            onSave={(source) => {
+            onSave={async (source) => {
               if (editingItem) {
-                updateIncomeSource({ ...source, id: editingItem.id });
+                await updateIncomeSource({ ...source, id: editingItem.id });
               } else {
-                addIncomeSource(source);
+                await addIncomeSource(source);
               }
               handleCloseModal();
             }}
@@ -114,11 +114,11 @@ export default function FinanzenPage() {
       case 'fixkosten':
         return (
           <FixedCostForm
-            onSave={(cost) => {
+            onSave={async (cost) => {
               if (editingItem) {
-                updateFixedCost({ ...cost, id: editingItem.id });
+                await updateFixedCost({ ...cost, id: editingItem.id });
               } else {
-                addFixedCost(cost);
+                await addFixedCost(cost);
               }
               handleCloseModal();
             }}
@@ -129,11 +129,11 @@ export default function FinanzenPage() {
       case 'variable':
         return (
           <VariableCostForm
-            onSave={(cost) => {
+            onSave={async (cost) => {
               if (editingItem) {
-                updateVariableCost({ ...cost, id: editingItem.id });
+                await updateVariableCost({ ...cost, id: editingItem.id });
               } else {
-                addVariableCost(cost);
+                await addVariableCost(cost);
               }
               handleCloseModal();
             }}
@@ -144,11 +144,11 @@ export default function FinanzenPage() {
       case 'schulden':
         return (
           <DebtForm
-            onSave={(debt) => {
+            onSave={async (debt) => {
               if (editingItem) {
-                updateDebt({ ...debt, id: editingItem.id });
+                await updateDebt({ ...debt, id: editingItem.id });
               } else {
-                addDebt(debt);
+                await addDebt(debt);
               }
               handleCloseModal();
             }}
@@ -159,8 +159,8 @@ export default function FinanzenPage() {
       case 'vermoegen':
         return (
           <AssetsForm
-            onSave={(newAssets) => {
-              updateAssets(newAssets);
+            onSave={async (newAssets) => {
+              await updateAssets(newAssets);
               handleCloseModal();
             }}
             onCancel={handleCloseModal}

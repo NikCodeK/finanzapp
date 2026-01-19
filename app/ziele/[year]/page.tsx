@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { PlusIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useGoals } from '@/hooks/useGoals';
 import { useDebts } from '@/hooks/useDebts';
-import { useFinancialProfile } from '@/hooks/useFinancialProfile';
+import { useSharedFinancialProfile } from '@/contexts/FinancialProfileContext';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -34,7 +34,7 @@ export default function ZielePage() {
   } = useGoals(year);
 
   const { debts } = useDebts();
-  const { monthlyIncome, isLoading: isProfileLoading } = useFinancialProfile();
+  const { monthlyIncome, isLoading: isProfileLoading } = useSharedFinancialProfile();
 
   const filteredGoals = filterType === 'alle'
     ? goals

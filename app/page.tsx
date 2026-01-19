@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useFinancialProfile } from '@/hooks/useFinancialProfile';
+import { useSharedFinancialProfile } from '@/contexts/FinancialProfileContext';
 import { useGoals } from '@/hooks/useGoals';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -42,7 +42,7 @@ export default function Dashboard() {
     savingsRate,
     healthScore,
     isLoading,
-  } = useFinancialProfile();
+  } = useSharedFinancialProfile();
 
   const { goals } = useGoals(new Date().getFullYear());
   const { getCurrentMonthBudgets } = useBudgets();

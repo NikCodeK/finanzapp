@@ -5,7 +5,7 @@ import { Goal, GoalType, GoalStatus, GOAL_TYPES, Debt, IncomeMilestone } from '@
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
-import { toDateISO, formatCurrency } from '@/lib/utils';
+import { toDateISO, formatCurrency, generateId } from '@/lib/utils';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface GoalFormProps {
@@ -53,25 +53,27 @@ export default function GoalForm({
 
   // Milestone Management
   const addMilestone = () => {
-    const startVal = parseFloat(startAmount) || 0;
-    const targetVal = parseFloat(targetAmount) || 0;
-    const lastMilestone = milestones.length > 0
-      ? milestones[milestones.length - 1].targetAmount
-      : startVal;
+    setMilestones((prev) => {
+      const startVal = parseFloat(startAmount) || 0;
+      const targetVal = parseFloat(targetAmount) || 0;
+      const lastMilestone = prev.length > 0
+        ? prev[prev.length - 1].targetAmount
+        : startVal;
 
-    // Suggest a value between last milestone and target
-    const suggestedAmount = lastMilestone + (targetVal - lastMilestone) / 2;
+      // Suggest a value between last milestone and target
+      const suggestedAmount = lastMilestone + (targetVal - lastMilestone) / 2;
 
-    const newMilestone: IncomeMilestone = {
-      id: `milestone-${Date.now()}`,
-      targetAmount: Math.round(suggestedAmount / 100) * 100, // Round to nearest 100
-      name: `Meilenstein ${milestones.length + 1}`,
-    };
-    setMilestones([...milestones, newMilestone].sort((a, b) => a.targetAmount - b.targetAmount));
+      const newMilestone: IncomeMilestone = {
+        id: generateId(),
+        targetAmount: Math.round(suggestedAmount / 100) * 100, // Round to nearest 100
+        name: `Meilenstein ${prev.length + 1}`,
+      };
+      return [...prev, newMilestone].sort((a, b) => a.targetAmount - b.targetAmount);
+    });
   };
 
   const updateMilestone = (id: string, field: 'targetAmount' | 'name', value: string) => {
-    setMilestones(milestones.map(m => {
+    setMilestones((prev) => prev.map(m => {
       if (m.id !== id) return m;
       if (field === 'targetAmount') {
         return { ...m, targetAmount: parseFloat(value) || 0 };
@@ -81,7 +83,7 @@ export default function GoalForm({
   };
 
   const removeMilestone = (id: string) => {
-    setMilestones(milestones.filter(m => m.id !== id));
+    setMilestones((prev) => prev.filter(m => m.id !== id));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
