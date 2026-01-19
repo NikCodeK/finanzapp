@@ -1,12 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useFinancialProfile } from '@/hooks/useFinancialProfile';
 import { useGoals } from '@/hooks/useGoals';
+import { useBudgets } from '@/hooks/useBudgets';
+import { useTransactions } from '@/hooks/useTransactions';
 import KPICard from '@/components/KPICard';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import QuickTransactionAdd from '@/components/QuickTransactionAdd';
 import Link from 'next/link';
+import { addTransaction } from '@/lib/supabase-storage';
 import {
   BanknotesIcon,
   ArrowTrendingUpIcon,
@@ -15,8 +19,11 @@ import {
   FlagIcon,
   CheckCircleIcon,
   XCircleIcon,
+  ChartBarIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getMonthRange, toDateISO, classNames } from '@/lib/utils';
+import { groupByCategory } from '@/lib/calculations';
 
 export default function Dashboard() {
   const {
@@ -38,11 +45,59 @@ export default function Dashboard() {
   } = useFinancialProfile();
 
   const { goals } = useGoals(new Date().getFullYear());
+  const { getCurrentMonthBudgets } = useBudgets();
+
+  // Get current month transactions for budget calculation
+  const monthRange = getMonthRange(new Date());
+  const monthStartISO = toDateISO(monthRange.start);
+  const monthEndISO = toDateISO(monthRange.end);
+  const { transactions: monthTransactions, refresh: refreshTransactions } = useTransactions({
+    mode: 'range',
+    startDateISO: monthStartISO,
+    endDateISO: monthEndISO,
+  });
+
+  // Handler for quick transaction add
+  const handleQuickAdd = async (transaction: Parameters<typeof addTransaction>[0]) => {
+    const result = await addTransaction(transaction);
+    if (result) {
+      // Refresh transactions to update budget widget
+      refreshTransactions();
+    }
+    return result;
+  };
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Calculate budget status for dashboard widget
+  const budgetStatus = useMemo(() => {
+    const budgets = getCurrentMonthBudgets();
+    if (budgets.length === 0) return [];
+
+    const expenseByCategory = groupByCategory(monthTransactions, 'expense');
+
+    return budgets
+      .map((budget) => {
+        const spent = expenseByCategory[budget.category] || 0;
+        const percentage = budget.budgetAmount > 0
+          ? (spent / budget.budgetAmount) * 100
+          : 0;
+        return {
+          category: budget.category,
+          budgetAmount: budget.budgetAmount,
+          spent,
+          percentage,
+          isOverBudget: spent > budget.budgetAmount,
+          isWarning: percentage >= 80 && percentage < 100,
+        };
+      })
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 3);
+  }, [getCurrentMonthBudgets, monthTransactions]);
 
   if (!mounted || isLoading) {
     return (
@@ -77,6 +132,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Quick Transaction Add */}
+      <QuickTransactionAdd onAdd={handleQuickAdd} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -196,6 +254,69 @@ export default function Dashboard() {
           </div>
         </div>
       </Card>
+
+      {/* Budget Status Widget */}
+      {budgetStatus.length > 0 && (
+        <Card>
+          <CardHeader
+            title="Budget-Status"
+            subtitle="Diesen Monat"
+            action={
+              <Link href="/monthly">
+                <Button variant="ghost" size="sm">Details</Button>
+              </Link>
+            }
+          />
+          <div className="space-y-3">
+            {budgetStatus.map((budget) => (
+              <div key={budget.category} className="p-3 bg-slate-50 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
+                    {budget.isOverBudget ? (
+                      <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />
+                    ) : budget.isWarning ? (
+                      <ExclamationTriangleIcon className="h-4 w-4 text-orange-500" />
+                    ) : (
+                      <ChartBarIcon className="h-4 w-4 text-green-500" />
+                    )}
+                    <span className="font-medium text-slate-900">{budget.category}</span>
+                  </div>
+                  <span className="text-sm text-slate-500">
+                    {formatCurrency(budget.spent)} / {formatCurrency(budget.budgetAmount)}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-2">
+                  <div
+                    className={classNames(
+                      'h-2 rounded-full transition-all',
+                      budget.isOverBudget
+                        ? 'bg-red-500'
+                        : budget.isWarning
+                        ? 'bg-orange-500'
+                        : 'bg-green-500'
+                    )}
+                    style={{ width: `${Math.min(budget.percentage, 100)}%` }}
+                  />
+                </div>
+                <p
+                  className={classNames(
+                    'text-xs mt-1',
+                    budget.isOverBudget
+                      ? 'text-red-600'
+                      : budget.isWarning
+                      ? 'text-orange-600'
+                      : 'text-slate-500'
+                  )}
+                >
+                  {budget.percentage.toFixed(0)}% verbraucht
+                  {budget.isOverBudget && ' - Budget überschritten!'}
+                  {budget.isWarning && ' - Fast aufgebraucht'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Ziele */}
       {activeGoals.length > 0 && (

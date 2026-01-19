@@ -240,3 +240,17 @@ export const GOAL_TYPES: { value: GoalType; label: string }[] = [
   { value: 'anschaffung', label: 'Anschaffung' },
   { value: 'einkommen', label: 'Einkommen erhöhen' },
 ];
+
+// ============================================
+// TRANSAKTIONSVORLAGEN
+// ============================================
+
+export interface TransactionTemplate {
+  id: string;
+  name: string;                    // z.B. "Miete", "Gehalt"
+  type: 'income' | 'expense';
+  amount: number;
+  category: string;
+  account: string;
+  note?: string;
+}

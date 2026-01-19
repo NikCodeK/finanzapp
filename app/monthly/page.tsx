@@ -6,8 +6,11 @@ import { useBudgets } from '@/hooks/useBudgets';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import Modal from '@/components/ui/Modal';
 import CategoryPie from '@/components/charts/CategoryPie';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import BudgetForm from '@/components/finanzen/BudgetForm';
+import { Budget } from '@/lib/types';
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import {
   formatCurrency,
   formatMonth,
@@ -41,9 +44,11 @@ export default function MonthlyPage() {
     startDateISO: monthStartISO,
     endDateISO: monthEndISO,
   });
-  const { getBudgetsByMonth } = useBudgets();
+  const { getBudgetsByMonth, addBudget, updateBudget, deleteBudget } = useBudgets();
 
   const [mounted, setMounted] = useState(false);
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -102,6 +107,29 @@ export default function MonthlyPage() {
         : addMonths(currentDate, 1);
     setSelectedMonth(format(newDate, 'yyyy-MM'));
   };
+
+  const handleSaveBudget = async (budgetData: Omit<Budget, 'id'>) => {
+    if (editingBudget) {
+      await updateBudget({ ...budgetData, id: editingBudget.id });
+    } else {
+      await addBudget({ ...budgetData, monthISO: selectedMonth });
+    }
+    setShowBudgetModal(false);
+    setEditingBudget(null);
+  };
+
+  const handleEditBudget = (budget: Budget) => {
+    setEditingBudget(budget);
+    setShowBudgetModal(true);
+  };
+
+  const handleDeleteBudget = async (id: string) => {
+    if (confirm('Möchten Sie dieses Budget wirklich löschen?')) {
+      await deleteBudget(id);
+    }
+  };
+
+  const existingBudgetCategories = budgets.map((b) => b.category);
 
   if (!mounted || isLoading) {
     return (
@@ -228,6 +256,18 @@ export default function MonthlyPage() {
         <CardHeader
           title="Budget vs. Tatsächlich"
           subtitle={formatMonth(selectedMonth + '-01')}
+          action={
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingBudget(null);
+                setShowBudgetModal(true);
+              }}
+            >
+              <PlusIcon className="h-4 w-4 mr-1" />
+              Budget hinzufügen
+            </Button>
+          }
         />
         {budgets.length > 0 ? (
           <div className="overflow-x-auto">
@@ -248,6 +288,9 @@ export default function MonthlyPage() {
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-slate-500">
                     Fortschritt
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-slate-500">
+                    Aktionen
                   </th>
                 </tr>
               </thead>
@@ -297,6 +340,24 @@ export default function MonthlyPage() {
                           </span>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            onClick={() => handleEditBudget(budget)}
+                            className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                            title="Bearbeiten"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBudget(budget.id)}
+                            className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                            title="Löschen"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -305,10 +366,41 @@ export default function MonthlyPage() {
           </div>
         ) : (
           <div className="text-center py-8 text-slate-500">
-            Keine Budgets für diesen Monat definiert
+            <p>Keine Budgets für diesen Monat definiert</p>
+            <Button
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                setEditingBudget(null);
+                setShowBudgetModal(true);
+              }}
+            >
+              <PlusIcon className="h-4 w-4 mr-1" />
+              Erstes Budget erstellen
+            </Button>
           </div>
         )}
       </Card>
+
+      {/* Budget Modal */}
+      <Modal
+        isOpen={showBudgetModal}
+        onClose={() => {
+          setShowBudgetModal(false);
+          setEditingBudget(null);
+        }}
+        title={editingBudget ? 'Budget bearbeiten' : 'Neues Budget'}
+      >
+        <BudgetForm
+          onSave={handleSaveBudget}
+          onCancel={() => {
+            setShowBudgetModal(false);
+            setEditingBudget(null);
+          }}
+          initialData={editingBudget}
+          existingCategories={existingBudgetCategories}
+        />
+      </Modal>
 
       {/* Category Breakdown */}
       <Card>

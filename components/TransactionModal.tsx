@@ -5,8 +5,10 @@ import Modal from './ui/Modal';
 import Button from './ui/Button';
 import Input from './ui/Input';
 import Select from './ui/Select';
-import { Transaction, EXPENSE_CATEGORIES, INCOME_CATEGORIES, ACCOUNTS } from '@/lib/types';
-import { toDateISO } from '@/lib/utils';
+import { Transaction, TransactionTemplate, EXPENSE_CATEGORIES, INCOME_CATEGORIES, ACCOUNTS } from '@/lib/types';
+import { toDateISO, formatCurrency } from '@/lib/utils';
+import { useTransactionTemplates } from '@/hooks/useTransactionTemplates';
+import { BookmarkIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -28,6 +30,10 @@ export default function TransactionModal({
   const [dateISO, setDateISO] = useState(toDateISO(new Date()));
   const [recurring, setRecurring] = useState(false);
   const [note, setNote] = useState('');
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+
+  const { templates, addTemplate, deleteTemplate, getTemplatesByType } = useTransactionTemplates();
 
   useEffect(() => {
     if (editTransaction) {
@@ -51,6 +57,16 @@ export default function TransactionModal({
     setDateISO(toDateISO(new Date()));
     setRecurring(false);
     setNote('');
+    setSaveAsTemplate(false);
+    setTemplateName('');
+  };
+
+  const applyTemplate = (template: TransactionTemplate) => {
+    setType(template.type);
+    setAmount(template.amount.toString());
+    setCategory(template.category);
+    setAccount(template.account);
+    setNote(template.note || '');
   };
 
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
@@ -59,6 +75,18 @@ export default function TransactionModal({
     e.preventDefault();
 
     if (!amount || !category) return;
+
+    // Save as template if requested
+    if (saveAsTemplate && templateName.trim()) {
+      addTemplate({
+        name: templateName.trim(),
+        type,
+        amount: parseFloat(amount),
+        category,
+        account,
+        note: note || undefined,
+      });
+    }
 
     onSave({
       type,
@@ -74,6 +102,8 @@ export default function TransactionModal({
     onClose();
   };
 
+  const currentTemplates = getTemplatesByType(type);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -81,6 +111,35 @@ export default function TransactionModal({
       title={editTransaction ? 'Transaktion bearbeiten' : 'Neue Transaktion'}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Template Selection */}
+        {!editTransaction && currentTemplates.length > 0 && (
+          <div className="bg-slate-50 rounded-lg p-3">
+            <p className="text-sm font-medium text-slate-700 mb-2">Aus Vorlage ausfüllen:</p>
+            <div className="flex flex-wrap gap-2">
+              {currentTemplates.map((template) => (
+                <div key={template.id} className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate(template)}
+                    className="px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
+                  >
+                    <span className="font-medium">{template.name}</span>
+                    <span className="text-slate-500 ml-1">({formatCurrency(template.amount)})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteTemplate(template.id)}
+                    className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                    title="Vorlage löschen"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Type Toggle */}
         <div className="flex rounded-lg bg-slate-100 p-1">
           <button
@@ -164,6 +223,32 @@ export default function TransactionModal({
           />
           <span className="text-sm text-slate-700">Wiederkehrend</span>
         </label>
+
+        {/* Save as Template Option */}
+        {!editTransaction && (
+          <div className="space-y-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={saveAsTemplate}
+                onChange={(e) => setSaveAsTemplate(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm text-slate-700 flex items-center gap-1">
+                <BookmarkIcon className="h-4 w-4" />
+                Als Vorlage speichern
+              </span>
+            </label>
+            {saveAsTemplate && (
+              <Input
+                placeholder="Vorlagenname (z.B. Miete, Gehalt)"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                required={saveAsTemplate}
+              />
+            )}
+          </div>
+        )}
 
         {/* Note */}
         <Input

@@ -12,7 +12,8 @@ import {
   Assets,
   Goal,
   EnhancedWeeklyReport,
-  QuarterlyBonusStatus
+  QuarterlyBonusStatus,
+  TransactionTemplate
 } from './types';
 
 type TransactionPage = {
@@ -1032,4 +1033,80 @@ export async function deleteBudget(id: string): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+// ============================================
+// TRANSACTION TEMPLATES (localStorage)
+// ============================================
+
+const TEMPLATES_STORAGE_KEY = 'finanzapp_transaction_templates';
+
+function generateTemplateId(): string {
+  return `tpl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+export function getTransactionTemplates(): TransactionTemplate[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const stored = localStorage.getItem(TEMPLATES_STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored) as TransactionTemplate[];
+  } catch (error) {
+    console.error('Error reading templates from localStorage:', error);
+    return [];
+  }
+}
+
+export function addTransactionTemplate(
+  template: Omit<TransactionTemplate, 'id'>
+): TransactionTemplate | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const templates = getTransactionTemplates();
+    const newTemplate: TransactionTemplate = {
+      ...template,
+      id: generateTemplateId(),
+    };
+    templates.push(newTemplate);
+    localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
+    return newTemplate;
+  } catch (error) {
+    console.error('Error adding template to localStorage:', error);
+    return null;
+  }
+}
+
+export function updateTransactionTemplate(
+  template: TransactionTemplate
+): boolean {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    const templates = getTransactionTemplates();
+    const index = templates.findIndex((t) => t.id === template.id);
+    if (index === -1) return false;
+
+    templates[index] = template;
+    localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
+    return true;
+  } catch (error) {
+    console.error('Error updating template in localStorage:', error);
+    return false;
+  }
+}
+
+export function deleteTransactionTemplate(id: string): boolean {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    const templates = getTransactionTemplates();
+    const filtered = templates.filter((t) => t.id !== id);
+    localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(filtered));
+    return true;
+  } catch (error) {
+    console.error('Error deleting template from localStorage:', error);
+    return false;
+  }
 }
