@@ -741,7 +741,7 @@ export async function saveAssets(assets: Assets): Promise<boolean> {
 export async function getGoals(): Promise<Goal[]> {
   const { data, error } = await supabase
     .from('goals')
-    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note')
+    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note, milestones')
     .order('priority', { ascending: true })
     .order('deadline_iso', { ascending: true });
 
@@ -764,13 +764,14 @@ export async function getGoals(): Promise<Goal[]> {
     priority: row.priority as 1 | 2 | 3,
     linkedDebtId: row.linked_debt_id,
     note: row.note,
+    milestones: row.milestones || undefined,
   }));
 }
 
 export async function getGoalsByYear(year: number): Promise<Goal[]> {
   const { data, error } = await supabase
     .from('goals')
-    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note')
+    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note, milestones')
     .eq('year', year)
     .order('priority', { ascending: true })
     .order('deadline_iso', { ascending: true });
@@ -794,6 +795,7 @@ export async function getGoalsByYear(year: number): Promise<Goal[]> {
     priority: row.priority as 1 | 2 | 3,
     linkedDebtId: row.linked_debt_id,
     note: row.note,
+    milestones: row.milestones || undefined,
   }));
 }
 
@@ -813,8 +815,9 @@ export async function addGoal(goal: Omit<Goal, 'id'>): Promise<Goal | null> {
       priority: goal.priority,
       linked_debt_id: goal.linkedDebtId,
       note: goal.note,
+      milestones: goal.milestones || null,
     })
-    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note')
+    .select('id, year, name, type, target_amount, current_amount, start_amount, deadline_iso, created_at_iso, status, priority, linked_debt_id, note, milestones')
     .single();
 
   if (error) {
@@ -836,6 +839,7 @@ export async function addGoal(goal: Omit<Goal, 'id'>): Promise<Goal | null> {
     priority: data.priority as 1 | 2 | 3,
     linkedDebtId: data.linked_debt_id,
     note: data.note,
+    milestones: data.milestones || undefined,
   };
 }
 
@@ -854,6 +858,7 @@ export async function updateGoal(goal: Goal): Promise<boolean> {
       priority: goal.priority,
       linked_debt_id: goal.linkedDebtId,
       note: goal.note,
+      milestones: goal.milestones || null,
     })
     .eq('id', goal.id);
 
