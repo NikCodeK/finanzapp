@@ -37,8 +37,16 @@ export default function GoalForm({
   const [priority, setPriority] = useState<1 | 2 | 3>(initialData?.priority || 2);
   const [linkedDebtId, setLinkedDebtId] = useState(initialData?.linkedDebtId || '');
   const [note, setNote] = useState(initialData?.note || '');
-  const [milestones, setMilestones] = useState<IncomeMilestone[]>(
-    initialData?.milestones || []
+  const [milestones, setMilestones] = useState<Array<{
+    id: string;
+    name: string;
+    targetAmount: string;
+  }>>(
+    (initialData?.milestones || []).map((m) => ({
+      id: m.id,
+      name: m.name || '',
+      targetAmount: m.targetAmount.toString(),
+    }))
   );
 
   const isIncomeGoal = type === 'einkommen';
@@ -57,7 +65,7 @@ export default function GoalForm({
       const startVal = parseFloat(startAmount) || 0;
       const targetVal = parseFloat(targetAmount) || 0;
       const lastMilestone = prev.length > 0
-        ? prev[prev.length - 1].targetAmount
+        ? parseFloat(prev[prev.length - 1].targetAmount) || 0
         : startVal;
 
       // Suggest a value between last milestone and target
@@ -68,7 +76,14 @@ export default function GoalForm({
         targetAmount: Math.round(suggestedAmount / 100) * 100, // Round to nearest 100
         name: `Meilenstein ${prev.length + 1}`,
       };
-      return [...prev, newMilestone].sort((a, b) => a.targetAmount - b.targetAmount);
+      return [
+        ...prev,
+        {
+          id: newMilestone.id,
+          name: newMilestone.name || '',
+          targetAmount: newMilestone.targetAmount.toString(),
+        },
+      ];
     });
   };
 
@@ -76,10 +91,10 @@ export default function GoalForm({
     setMilestones((prev) => prev.map(m => {
       if (m.id !== id) return m;
       if (field === 'targetAmount') {
-        return { ...m, targetAmount: parseFloat(value) || 0 };
+        return { ...m, targetAmount: value };
       }
       return { ...m, name: value };
-    }).sort((a, b) => a.targetAmount - b.targetAmount));
+    }));
   };
 
   const removeMilestone = (id: string) => {
@@ -88,6 +103,13 @@ export default function GoalForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedMilestones: IncomeMilestone[] = milestones
+      .map((m) => ({
+        id: m.id,
+        name: m.name.trim(),
+        targetAmount: parseFloat(m.targetAmount) || 0,
+      }))
+      .sort((a, b) => a.targetAmount - b.targetAmount);
     onSave({
       year,
       name,
@@ -99,7 +121,7 @@ export default function GoalForm({
       status,
       priority,
       linkedDebtId: linkedDebtId || undefined,
-      milestones: isIncomeGoal && milestones.length > 0 ? milestones : undefined,
+      milestones: isIncomeGoal && normalizedMilestones.length > 0 ? normalizedMilestones : undefined,
       note: note || undefined,
     });
   };
@@ -210,7 +232,7 @@ export default function GoalForm({
                     <span className="text-xs text-slate-400 w-6">{index + 1}.</span>
                     <input
                       type="text"
-                      value={milestone.name || ''}
+                      value={milestone.name}
                       onChange={(e) => updateMilestone(milestone.id, 'name', e.target.value)}
                       placeholder="Name (optional)"
                       className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
@@ -240,7 +262,9 @@ export default function GoalForm({
               <div className="mt-3 pt-3 border-t border-slate-200 text-xs text-slate-500">
                 <div className="flex justify-between">
                   <span>Start: {formatCurrency(parseFloat(startAmount) || 0)}</span>
-                  <span>→ {milestones.map(m => formatCurrency(m.targetAmount)).join(' → ')}</span>
+                  <span>
+                    → {milestones.map((m) => formatCurrency(parseFloat(m.targetAmount) || 0)).join(' → ')}
+                  </span>
                   <span>→ Ziel: {formatCurrency(parseFloat(targetAmount) || 0)}</span>
                 </div>
               </div>
