@@ -22,16 +22,21 @@ import FixedCostForm from '@/components/finanzen/FixedCostForm';
 import VariableCostForm from '@/components/finanzen/VariableCostForm';
 import DebtForm from '@/components/finanzen/DebtForm';
 import AssetsForm from '@/components/finanzen/AssetsForm';
-import { IncomeSource, FixedCost, VariableCostEstimate, Debt, Assets, QuarterlyBonusStatus } from '@/lib/types';
+import CreditCardForm from '@/components/finanzen/CreditCardForm';
+import CreditCardBalanceForm from '@/components/finanzen/CreditCardBalanceForm';
+import { useCreditCards } from '@/hooks/useCreditCards';
+import { IncomeSource, FixedCost, VariableCostEstimate, Debt, Assets, QuarterlyBonusStatus, CreditCard, CreditCardBalance } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
-type TabType = 'uebersicht' | 'einnahmen' | 'fixkosten' | 'variable' | 'schulden' | 'vermoegen';
+type TabType = 'uebersicht' | 'einnahmen' | 'fixkosten' | 'variable' | 'schulden' | 'kreditkarten' | 'vermoegen';
 
 export default function FinanzenPage() {
   const [activeTab, setActiveTab] = useState<TabType>('uebersicht');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<IncomeSource | FixedCost | VariableCostEstimate | Debt | null>(null);
+  const [editingItem, setEditingItem] = useState<IncomeSource | FixedCost | VariableCostEstimate | Debt | CreditCard | null>(null);
   const [editingAssets, setEditingAssets] = useState(false);
+  const [addingBalance, setAddingBalance] = useState(false);
+  const [selectedCardForBalance, setSelectedCardForBalance] = useState<string | undefined>();
 
   const {
     incomeSources,
@@ -69,12 +74,26 @@ export default function FinanzenPage() {
     healthScore,
   } = useSharedFinancialProfile();
 
+  const {
+    creditCards,
+    totalCreditCardDebt,
+    totalCreditLimit,
+    averageUtilization,
+    totalMonthlyFees: creditCardMonthlyFees,
+    addCreditCard,
+    updateCreditCard,
+    deleteCreditCard,
+    addBalance,
+    isLoading: creditCardsLoading,
+  } = useCreditCards();
+
   const tabs = [
     { id: 'uebersicht' as TabType, label: 'Übersicht', icon: ChartPieIcon },
     { id: 'einnahmen' as TabType, label: 'Einnahmen', icon: BanknotesIcon },
     { id: 'fixkosten' as TabType, label: 'Fixkosten', icon: CreditCardIcon },
     { id: 'variable' as TabType, label: 'Variable', icon: WalletIcon },
     { id: 'schulden' as TabType, label: 'Schulden', icon: BuildingLibraryIcon },
+    { id: 'kreditkarten' as TabType, label: 'Kreditkarten', icon: CreditCardIcon },
     { id: 'vermoegen' as TabType, label: 'Vermögen', icon: WalletIcon },
   ];
 
@@ -83,7 +102,7 @@ export default function FinanzenPage() {
     setModalOpen(true);
   };
 
-  const handleEditClick = (item: IncomeSource | FixedCost | VariableCostEstimate | Debt) => {
+  const handleEditClick = (item: IncomeSource | FixedCost | VariableCostEstimate | Debt | CreditCard) => {
     setEditingItem(item);
     setModalOpen(true);
   };
@@ -92,6 +111,8 @@ export default function FinanzenPage() {
     setModalOpen(false);
     setEditingItem(null);
     setEditingAssets(false);
+    setAddingBalance(false);
+    setSelectedCardForBalance(undefined);
   };
 
   const renderModalContent = () => {
@@ -167,6 +188,34 @@ export default function FinanzenPage() {
             initialData={assets}
           />
         );
+      case 'kreditkarten':
+        if (addingBalance) {
+          return (
+            <CreditCardBalanceForm
+              creditCards={creditCards}
+              onSave={async (balance) => {
+                await addBalance(balance);
+                handleCloseModal();
+              }}
+              onCancel={handleCloseModal}
+              preselectedCardId={selectedCardForBalance}
+            />
+          );
+        }
+        return (
+          <CreditCardForm
+            onSave={async (card) => {
+              if (editingItem) {
+                await updateCreditCard({ ...card, id: editingItem.id });
+              } else {
+                await addCreditCard(card);
+              }
+              handleCloseModal();
+            }}
+            onCancel={handleCloseModal}
+            initialData={editingItem as CreditCard | null}
+          />
+        );
       default:
         return null;
     }
@@ -183,6 +232,9 @@ export default function FinanzenPage() {
         return isEditing ? 'Variable Kosten bearbeiten' : 'Neue Variable Kosten';
       case 'schulden':
         return isEditing ? 'Schulden bearbeiten' : 'Neue Schulden';
+      case 'kreditkarten':
+        if (addingBalance) return 'Stand aktualisieren';
+        return isEditing ? 'Kreditkarte bearbeiten' : 'Neue Kreditkarte';
       case 'vermoegen':
         return 'Vermögen bearbeiten';
       default:
@@ -566,6 +618,156 @@ export default function FinanzenPage() {
                           <span>{formatCurrency(paidOff)} abbezahlt</span>
                           <span>{Math.round(progress * 100)}%</span>
                         </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {activeTab === 'kreditkarten' && (
+          <Card>
+            <CardHeader
+              title="Kreditkarten"
+              subtitle={`${creditCards.length} Karte${creditCards.length !== 1 ? 'n' : ''} - ${formatCurrency(totalCreditCardDebt)} Gesamtstand`}
+              action={
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setAddingBalance(true);
+                      setModalOpen(true);
+                    }}
+                  >
+                    <PlusIcon className="h-4 w-4 mr-1" />
+                    Stand
+                  </Button>
+                  <Button size="sm" onClick={handleAddClick}>
+                    <PlusIcon className="h-4 w-4 mr-1" />
+                    Karte
+                  </Button>
+                </div>
+              }
+            />
+
+            {/* Summary */}
+            {creditCards.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-sm text-red-600">Gesamtstand</p>
+                  <p className="text-xl font-bold text-red-700">{formatCurrency(totalCreditCardDebt)}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-sm text-slate-600">Gesamtlimit</p>
+                  <p className="text-xl font-bold text-slate-700">{formatCurrency(totalCreditLimit)}</p>
+                </div>
+                <div className={`p-3 rounded-lg border ${averageUtilization >= 80 ? 'bg-red-50 border-red-200' : averageUtilization >= 50 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
+                  <p className={`text-sm ${averageUtilization >= 80 ? 'text-red-600' : averageUtilization >= 50 ? 'text-orange-600' : 'text-green-600'}`}>Auslastung</p>
+                  <p className={`text-xl font-bold ${averageUtilization >= 80 ? 'text-red-700' : averageUtilization >= 50 ? 'text-orange-700' : 'text-green-700'}`}>{averageUtilization.toFixed(1)}%</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-sm text-slate-600">Monatl. Gebühren</p>
+                  <p className="text-xl font-bold text-slate-700">{formatCurrency(creditCardMonthlyFees)}</p>
+                </div>
+              </div>
+            )}
+
+            {creditCards.length === 0 ? (
+              <p className="text-slate-500 text-center py-8">
+                Keine Kreditkarten vorhanden. Füge deine erste Kreditkarte hinzu.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {creditCards.map((card) => {
+                  const utilization = card.creditLimit > 0
+                    ? (card.currentBalance / card.creditLimit) * 100
+                    : 0;
+                  return (
+                    <div
+                      key={card.id}
+                      className={`p-4 rounded-lg border ${
+                        card.isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-slate-900">{card.name}</p>
+                            {card.bank && (
+                              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                                {card.bank}
+                              </span>
+                            )}
+                            {!card.isActive && (
+                              <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded">
+                                Inaktiv
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-500">
+                            Limit: {formatCurrency(card.creditLimit)}
+                            {card.interestRate > 0 && ` - ${card.interestRate}% Zinsen`}
+                            {card.billingDay && ` - Abrechnung am ${card.billingDay}.`}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => {
+                              setSelectedCardForBalance(card.id);
+                              setAddingBalance(true);
+                              setModalOpen(true);
+                            }}
+                            className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg"
+                            title="Stand aktualisieren"
+                          >
+                            <PlusIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditClick(card)}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteCreditCard(card.id)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">Aktueller Stand</span>
+                          <span className="font-semibold text-slate-900">
+                            {formatCurrency(card.currentBalance)}
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all ${
+                              utilization >= 80 ? 'bg-red-500' : utilization >= 50 ? 'bg-orange-500' : 'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min(utilization, 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs text-slate-500">
+                          <span>
+                            {formatCurrency(card.creditLimit - card.currentBalance)} verfügbar
+                          </span>
+                          <span className={utilization >= 80 ? 'text-red-600' : utilization >= 50 ? 'text-orange-600' : 'text-green-600'}>
+                            {utilization.toFixed(1)}% genutzt
+                          </span>
+                        </div>
+                        {(card.monthlyFee > 0 || card.annualFee > 0) && (
+                          <div className="pt-2 border-t border-slate-100 flex gap-4 text-xs text-slate-500">
+                            {card.monthlyFee > 0 && <span>Monatl.: {formatCurrency(card.monthlyFee)}</span>}
+                            {card.annualFee > 0 && <span>Jährlich: {formatCurrency(card.annualFee)}</span>}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

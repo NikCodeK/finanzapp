@@ -166,3 +166,39 @@ CREATE POLICY "Allow all" ON variable_costs FOR ALL USING (true) WITH CHECK (tru
 CREATE POLICY "Allow all" ON debts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all" ON assets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all" ON goals FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================
+-- CREDIT CARDS
+-- ============================================
+
+-- Credit Cards Tabelle
+CREATE TABLE IF NOT EXISTS credit_cards (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(200) NOT NULL,
+  bank VARCHAR(200),
+  credit_limit DECIMAL(12,2) DEFAULT 0,
+  current_balance DECIMAL(12,2) DEFAULT 0,
+  interest_rate DECIMAL(5,2) DEFAULT 0,
+  monthly_fee DECIMAL(12,2) DEFAULT 0,
+  annual_fee DECIMAL(12,2) DEFAULT 0,
+  billing_day INTEGER CHECK (billing_day >= 1 AND billing_day <= 31),
+  is_active BOOLEAN DEFAULT true,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Credit Card Balance History
+CREATE TABLE IF NOT EXISTS credit_card_balances (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  credit_card_id UUID REFERENCES credit_cards(id) ON DELETE CASCADE,
+  balance DECIMAL(12,2) NOT NULL,
+  recorded_at_iso DATE NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS für Credit Cards
+ALTER TABLE credit_cards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE credit_card_balances ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON credit_cards FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all" ON credit_card_balances FOR ALL USING (true) WITH CHECK (true);

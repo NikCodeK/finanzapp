@@ -5,10 +5,12 @@ import { useSharedFinancialProfile } from '@/contexts/FinancialProfileContext';
 import { useGoals } from '@/hooks/useGoals';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useCreditCards } from '@/hooks/useCreditCards';
 import KPICard from '@/components/KPICard';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import QuickTransactionAdd from '@/components/QuickTransactionAdd';
+import CreditCardWidget from '@/components/CreditCardWidget';
 import Link from 'next/link';
 import { addTransaction } from '@/lib/supabase-storage';
 import {
@@ -46,6 +48,13 @@ export default function Dashboard() {
 
   const { goals } = useGoals(new Date().getFullYear());
   const { getCurrentMonthBudgets } = useBudgets();
+  const {
+    creditCards,
+    totalCreditCardDebt,
+    totalCreditLimit,
+    averageUtilization,
+    addBalance,
+  } = useCreditCards();
 
   // Get current month transactions for budget calculation
   const monthRange = getMonthRange(new Date());
@@ -317,6 +326,15 @@ export default function Dashboard() {
           </div>
         </Card>
       )}
+
+      {/* Kreditkarten Widget */}
+      <CreditCardWidget
+        creditCards={creditCards}
+        totalCreditCardDebt={totalCreditCardDebt}
+        totalCreditLimit={totalCreditLimit}
+        averageUtilization={averageUtilization}
+        onAddBalance={addBalance}
+      />
 
       {/* Ziele */}
       {activeGoals.length > 0 && (

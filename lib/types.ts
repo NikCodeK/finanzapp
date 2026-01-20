@@ -254,3 +254,29 @@ export interface TransactionTemplate {
   account: string;
   note?: string;
 }
+
+// ============================================
+// KREDITKARTEN
+// ============================================
+
+export interface CreditCard {
+  id: string;
+  name: string;
+  bank?: string;
+  creditLimit: number;
+  currentBalance: number;
+  interestRate: number;
+  monthlyFee: number;
+  annualFee: number;
+  billingDay?: number;
+  isActive: boolean;
+  note?: string;
+}
+
+export interface CreditCardBalance {
+  id: string;
+  creditCardId: string;
+  balance: number;
+  recordedAtISO: string;
+  note?: string;
+}

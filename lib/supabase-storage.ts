@@ -13,7 +13,9 @@ import {
   Goal,
   EnhancedWeeklyReport,
   QuarterlyBonusStatus,
-  TransactionTemplate
+  TransactionTemplate,
+  CreditCard,
+  CreditCardBalance,
 } from './types';
 
 type TransactionPage = {
@@ -1114,4 +1116,179 @@ export function deleteTransactionTemplate(id: string): boolean {
     console.error('Error deleting template from localStorage:', error);
     return false;
   }
+}
+
+// ============================================
+// CREDIT CARDS
+// ============================================
+
+export async function getCreditCards(): Promise<CreditCard[]> {
+  const { data, error } = await supabase
+    .from('credit_cards')
+    .select('id, name, bank, credit_limit, current_balance, interest_rate, monthly_fee, annual_fee, billing_day, is_active, note')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching credit cards:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    bank: row.bank,
+    creditLimit: parseFloat(row.credit_limit),
+    currentBalance: parseFloat(row.current_balance),
+    interestRate: parseFloat(row.interest_rate),
+    monthlyFee: parseFloat(row.monthly_fee),
+    annualFee: parseFloat(row.annual_fee),
+    billingDay: row.billing_day,
+    isActive: row.is_active,
+    note: row.note,
+  }));
+}
+
+export async function addCreditCard(card: Omit<CreditCard, 'id'>): Promise<CreditCard | null> {
+  const { data, error } = await supabase
+    .from('credit_cards')
+    .insert({
+      name: card.name,
+      bank: card.bank,
+      credit_limit: card.creditLimit,
+      current_balance: card.currentBalance,
+      interest_rate: card.interestRate,
+      monthly_fee: card.monthlyFee,
+      annual_fee: card.annualFee,
+      billing_day: card.billingDay,
+      is_active: card.isActive,
+      note: card.note,
+    })
+    .select('id, name, bank, credit_limit, current_balance, interest_rate, monthly_fee, annual_fee, billing_day, is_active, note')
+    .single();
+
+  if (error) {
+    console.error('Error adding credit card:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    bank: data.bank,
+    creditLimit: parseFloat(data.credit_limit),
+    currentBalance: parseFloat(data.current_balance),
+    interestRate: parseFloat(data.interest_rate),
+    monthlyFee: parseFloat(data.monthly_fee),
+    annualFee: parseFloat(data.annual_fee),
+    billingDay: data.billing_day,
+    isActive: data.is_active,
+    note: data.note,
+  };
+}
+
+export async function updateCreditCard(card: CreditCard): Promise<boolean> {
+  const { error } = await supabase
+    .from('credit_cards')
+    .update({
+      name: card.name,
+      bank: card.bank,
+      credit_limit: card.creditLimit,
+      current_balance: card.currentBalance,
+      interest_rate: card.interestRate,
+      monthly_fee: card.monthlyFee,
+      annual_fee: card.annualFee,
+      billing_day: card.billingDay,
+      is_active: card.isActive,
+      note: card.note,
+    })
+    .eq('id', card.id);
+
+  if (error) {
+    console.error('Error updating credit card:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteCreditCard(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('credit_cards')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting credit card:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// CREDIT CARD BALANCES
+// ============================================
+
+export async function getCreditCardBalances(creditCardId: string): Promise<CreditCardBalance[]> {
+  const { data, error } = await supabase
+    .from('credit_card_balances')
+    .select('id, credit_card_id, balance, recorded_at_iso, note')
+    .eq('credit_card_id', creditCardId)
+    .order('recorded_at_iso', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching credit card balances:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    creditCardId: row.credit_card_id,
+    balance: parseFloat(row.balance),
+    recordedAtISO: row.recorded_at_iso,
+    note: row.note,
+  }));
+}
+
+export async function addCreditCardBalance(balance: Omit<CreditCardBalance, 'id'>): Promise<CreditCardBalance | null> {
+  const { data, error } = await supabase
+    .from('credit_card_balances')
+    .insert({
+      credit_card_id: balance.creditCardId,
+      balance: balance.balance,
+      recorded_at_iso: balance.recordedAtISO,
+      note: balance.note,
+    })
+    .select('id, credit_card_id, balance, recorded_at_iso, note')
+    .single();
+
+  if (error) {
+    console.error('Error adding credit card balance:', error);
+    return null;
+  }
+
+  // Update the current balance on the credit card
+  await supabase
+    .from('credit_cards')
+    .update({ current_balance: balance.balance })
+    .eq('id', balance.creditCardId);
+
+  return {
+    id: data.id,
+    creditCardId: data.credit_card_id,
+    balance: parseFloat(data.balance),
+    recordedAtISO: data.recorded_at_iso,
+    note: data.note,
+  };
+}
+
+export async function deleteCreditCardBalance(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('credit_card_balances')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting credit card balance:', error);
+    return false;
+  }
+  return true;
 }
