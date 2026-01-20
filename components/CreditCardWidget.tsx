@@ -30,10 +30,6 @@ export default function CreditCardWidget({
 
   const activeCards = creditCards.filter((c) => c.isActive);
 
-  if (activeCards.length === 0) {
-    return null;
-  }
-
   const handleAddBalanceClick = (cardId?: string) => {
     setSelectedCardId(cardId);
     setBalanceModalOpen(true);
@@ -62,24 +58,41 @@ export default function CreditCardWidget({
       <Card>
         <CardHeader
           title="Kreditkarten"
-          subtitle={`${activeCards.length} aktive Karte${activeCards.length !== 1 ? 'n' : ''}`}
+          subtitle={activeCards.length > 0 ? `${activeCards.length} aktive Karte${activeCards.length !== 1 ? 'n' : ''}` : 'Keine Karten'}
           action={
             <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleAddBalanceClick()}
-              >
-                <PlusIcon className="h-4 w-4 mr-1" />
-                Stand
-              </Button>
-              <Link href="/finanzen">
-                <Button variant="ghost" size="sm">Verwalten</Button>
+              {activeCards.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleAddBalanceClick()}
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Stand
+                </Button>
+              )}
+              <Link href="/finanzen?tab=kreditkarten">
+                <Button variant="ghost" size="sm">
+                  {activeCards.length > 0 ? 'Verwalten' : 'Hinzufügen'}
+                </Button>
               </Link>
             </div>
           }
         />
 
+        {activeCards.length === 0 ? (
+          <div className="text-center py-6">
+            <CreditCardIcon className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+            <p className="text-slate-500 mb-3">Keine Kreditkarten vorhanden</p>
+            <Link href="/finanzen?tab=kreditkarten">
+              <Button size="sm">
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Kreditkarte hinzufügen
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <>
         {/* Summary */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="p-3 bg-slate-50 rounded-lg">
@@ -154,6 +167,8 @@ export default function CreditCardWidget({
           <p className="text-sm text-slate-500 mt-3 text-center">
             +{activeCards.length - 3} weitere Karte{activeCards.length - 3 !== 1 ? 'n' : ''}
           </p>
+        )}
+          </>
         )}
       </Card>
 
