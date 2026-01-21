@@ -123,27 +123,29 @@ export function calculateNetWorthOverTime(
   monthsBack: number = 6
 ): { month: string; netWorth: number }[] {
   const result: { month: string; netWorth: number }[] = [];
-  let runningTotal = 0;
+  if (monthsBack <= 0) return result;
 
   const sortedTransactions = [...transactions].sort(
     (a, b) => parseISO(a.dateISO).getTime() - parseISO(b.dateISO).getTime()
   );
 
   const now = new Date();
+  let runningTotal = 0;
+  let txIndex = 0;
 
   for (let i = monthsBack - 1; i >= 0; i--) {
     const monthDate = addMonths(now, -i);
     const monthEnd = endOfMonth(monthDate);
-    const monthISO = format(monthDate, 'yyyy-MM');
 
-    const monthTransactions = sortedTransactions.filter(t => {
-      const date = parseISO(t.dateISO);
-      return date <= monthEnd;
-    });
-
-    runningTotal = monthTransactions.reduce((total, t) => {
-      return t.type === 'income' ? total + t.amount : total - t.amount;
-    }, 0);
+    while (txIndex < sortedTransactions.length) {
+      const tx = sortedTransactions[txIndex];
+      const txDate = parseISO(tx.dateISO);
+      if (txDate > monthEnd) break;
+      runningTotal = tx.type === 'income'
+        ? runningTotal + tx.amount
+        : runningTotal - tx.amount;
+      txIndex += 1;
+    }
 
     result.push({
       month: format(monthDate, 'MMM'),
@@ -159,17 +161,37 @@ export function getMonthlyIncomeExpenseData(
   monthsBack: number = 6
 ): { month: string; income: number; expenses: number }[] {
   const result: { month: string; income: number; expenses: number }[] = [];
+  if (monthsBack <= 0) return result;
+
   const now = new Date();
+  const startMonth = addMonths(now, -(monthsBack - 1));
+  const startDate = startOfMonth(startMonth);
+  const endDate = endOfMonth(now);
+
+  const buckets = new Map<string, { income: number; expenses: number }>();
+
+  for (const tx of transactions) {
+    const txDate = parseISO(tx.dateISO);
+    if (txDate < startDate || txDate > endDate) continue;
+    const key = format(txDate, 'yyyy-MM');
+    const bucket = buckets.get(key) || { income: 0, expenses: 0 };
+    if (tx.type === 'income') {
+      bucket.income += tx.amount;
+    } else {
+      bucket.expenses += tx.amount;
+    }
+    buckets.set(key, bucket);
+  }
 
   for (let i = monthsBack - 1; i >= 0; i--) {
     const monthDate = addMonths(now, -i);
     const monthISO = format(monthDate, 'yyyy-MM');
-    const summary = computeMonthlySummary(transactions, monthISO);
+    const bucket = buckets.get(monthISO) || { income: 0, expenses: 0 };
 
     result.push({
       month: format(monthDate, 'MMM'),
-      income: summary.income,
-      expenses: summary.expenses,
+      income: bucket.income,
+      expenses: bucket.expenses,
     });
   }
 

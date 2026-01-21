@@ -2,7 +2,7 @@
 
 import { Goal } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
-import { CheckCircleIcon, ClockIcon, FlagIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, ClockIcon, FlagIcon, CurrencyEuroIcon } from '@heroicons/react/24/outline';
 
 interface GoalsSummaryProps {
   goals: Goal[];
@@ -22,9 +22,17 @@ export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: 
       : goal.currentAmount;
   };
 
-  const totalTarget = activeGoals.reduce((sum, g) => sum + g.targetAmount, 0);
-  const totalCurrent = activeGoals.reduce((sum, g) => sum + getEffectiveCurrentAmount(g), 0);
+  // Exclude income and investment goals from savings calculations (different metrics)
+  const savingsGoals = activeGoals.filter((g) => g.type !== 'einkommen' && g.type !== 'investition');
+  const totalTarget = savingsGoals.reduce((sum, g) => sum + g.targetAmount, 0);
+  const totalCurrent = savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0);
   const totalRemaining = totalTarget - totalCurrent;
+
+  // Find income goal
+  const incomeGoal = goals.find((g) => g.type === 'einkommen' && g.status === 'aktiv');
+  const incomeProgress = incomeGoal && monthlyIncome !== undefined
+    ? Math.min(100, Math.round((monthlyIncome / incomeGoal.targetAmount) * 100))
+    : 0;
 
   const goalsOnTrack = activeGoals.filter((goal) => {
     const now = new Date();
@@ -38,7 +46,7 @@ export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: 
   }).length;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
         <div className="flex items-center gap-2 mb-2">
           <FlagIcon className="h-5 w-5 text-indigo-600" />
@@ -66,20 +74,43 @@ export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: 
           <ClockIcon className="h-5 w-5 text-blue-600" />
           <p className="text-sm font-medium text-blue-600">Noch zu sparen</p>
         </div>
-        <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalRemaining)}</p>
+        <p className="text-2xl font-bold text-blue-700">{formatCurrency(Math.max(0, totalRemaining))}</p>
         <p className="text-xs text-blue-500 mt-1">
-          von {formatCurrency(totalTarget)} Zielsum
+          {savingsGoals.length > 0 ? `von ${formatCurrency(totalTarget)} Zielsumme` : 'Keine Sparziele'}
         </p>
       </div>
 
       <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-sm font-medium text-slate-600">Aktueller Stand</p>
+          <p className="text-sm font-medium text-slate-600">Gespart</p>
         </div>
         <p className="text-2xl font-bold text-slate-700">{formatCurrency(totalCurrent)}</p>
         <p className="text-xs text-slate-500 mt-1">
-          {pausedGoals.length > 0 && `${pausedGoals.length} pausiert`}
+          {savingsGoals.length} Sparziel{savingsGoals.length !== 1 ? 'e' : ''}
+          {pausedGoals.length > 0 && ` · ${pausedGoals.length} pausiert`}
         </p>
+      </div>
+
+      <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+        <div className="flex items-center gap-2 mb-2">
+          <CurrencyEuroIcon className="h-5 w-5 text-amber-600" />
+          <p className="text-sm font-medium text-amber-600">Einkommensziel</p>
+        </div>
+        {incomeGoal ? (
+          <>
+            <p className="text-2xl font-bold text-amber-700">
+              {formatCurrency(monthlyIncome || 0)}
+            </p>
+            <p className="text-xs text-amber-500 mt-1">
+              von {formatCurrency(incomeGoal.targetAmount)} ({incomeProgress}%)
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-2xl font-bold text-amber-700">–</p>
+            <p className="text-xs text-amber-500 mt-1">Kein Einkommensziel</p>
+          </>
+        )}
       </div>
     </div>
   );

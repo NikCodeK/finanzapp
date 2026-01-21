@@ -1,11 +1,13 @@
 import { format, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { de } from 'date-fns/locale';
 
+const currencyFormatter = new Intl.NumberFormat('de-DE', {
+  style: 'currency',
+  currency: 'EUR',
+});
+
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    style: 'currency',
-    currency: 'EUR',
-  }).format(amount);
+  return currencyFormatter.format(amount);
 }
 
 export function formatDate(dateISO: string): string {

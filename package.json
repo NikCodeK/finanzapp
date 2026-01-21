@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:apply": "psql \"$SUPABASE_DB_URL\" -f scripts/apply-supabase-schema.sql"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.5",

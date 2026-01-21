@@ -167,6 +167,22 @@ CREATE POLICY "Allow all" ON debts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all" ON assets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all" ON goals FOR ALL USING (true) WITH CHECK (true);
 
+-- Indexes for common filters and ordering
+CREATE INDEX IF NOT EXISTS idx_transactions_date_iso ON transactions (date_iso);
+CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions (type);
+CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions (category);
+CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions (account);
+CREATE INDEX IF NOT EXISTS idx_transactions_date_type ON transactions (date_iso, type);
+
+CREATE INDEX IF NOT EXISTS idx_weekly_reports_week_start_iso ON weekly_reports (week_start_iso);
+
+CREATE INDEX IF NOT EXISTS idx_budgets_month_iso ON budgets (month_iso);
+CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets (category);
+CREATE INDEX IF NOT EXISTS idx_budgets_month_category ON budgets (month_iso, category);
+
+CREATE INDEX IF NOT EXISTS idx_goals_year ON goals (year);
+CREATE INDEX IF NOT EXISTS idx_goals_status ON goals (status);
+
 -- ============================================
 -- CREDIT CARDS
 -- ============================================
@@ -196,6 +212,9 @@ CREATE TABLE IF NOT EXISTS credit_card_balances (
   note TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_credit_card_balances_card_id ON credit_card_balances (credit_card_id);
+CREATE INDEX IF NOT EXISTS idx_credit_card_balances_recorded_at_iso ON credit_card_balances (recorded_at_iso);
 
 -- RLS für Credit Cards
 ALTER TABLE credit_cards ENABLE ROW LEVEL SECURITY;
