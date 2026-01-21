@@ -16,6 +16,8 @@ import {
   TransactionTemplate,
   CreditCard,
   CreditCardBalance,
+  FinancialSnapshot,
+  YearlyIncomeRecord,
 } from './types';
 
 type TransactionPage = {
@@ -1288,6 +1290,208 @@ export async function deleteCreditCardBalance(id: string): Promise<boolean> {
 
   if (error) {
     console.error('Error deleting credit card balance:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// FINANCIAL SNAPSHOTS
+// ============================================
+
+export async function getFinancialSnapshots(): Promise<FinancialSnapshot[]> {
+  const { data, error } = await supabase
+    .from('financial_snapshots')
+    .select('*')
+    .order('snapshot_date_iso', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching financial snapshots:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    createdAtISO: row.created_at,
+    snapshotDateISO: row.snapshot_date_iso,
+    name: row.name,
+    incomeSources: row.income_sources || [],
+    fixedCosts: row.fixed_costs || [],
+    variableCosts: row.variable_costs || [],
+    debts: row.debts || [],
+    creditCards: row.credit_cards || [],
+    assets: row.assets || { savings: 0, investments: 0, other: 0 },
+    monthlyIncome: parseFloat(row.monthly_income),
+    monthlyFixedCosts: parseFloat(row.monthly_fixed_costs),
+    monthlyVariableCosts: parseFloat(row.monthly_variable_costs),
+    totalDebt: parseFloat(row.total_debt),
+    totalAssets: parseFloat(row.total_assets),
+    netWorth: parseFloat(row.net_worth),
+    healthScore: row.health_score,
+    note: row.note,
+  }));
+}
+
+export async function addFinancialSnapshot(snapshot: Omit<FinancialSnapshot, 'id' | 'createdAtISO'>): Promise<FinancialSnapshot | null> {
+  const { data, error } = await supabase
+    .from('financial_snapshots')
+    .insert({
+      snapshot_date_iso: snapshot.snapshotDateISO,
+      name: snapshot.name,
+      income_sources: snapshot.incomeSources,
+      fixed_costs: snapshot.fixedCosts,
+      variable_costs: snapshot.variableCosts,
+      debts: snapshot.debts,
+      credit_cards: snapshot.creditCards,
+      assets: snapshot.assets,
+      monthly_income: snapshot.monthlyIncome,
+      monthly_fixed_costs: snapshot.monthlyFixedCosts,
+      monthly_variable_costs: snapshot.monthlyVariableCosts,
+      total_debt: snapshot.totalDebt,
+      total_assets: snapshot.totalAssets,
+      net_worth: snapshot.netWorth,
+      health_score: snapshot.healthScore,
+      note: snapshot.note,
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Error adding financial snapshot:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    createdAtISO: data.created_at,
+    snapshotDateISO: data.snapshot_date_iso,
+    name: data.name,
+    incomeSources: data.income_sources || [],
+    fixedCosts: data.fixed_costs || [],
+    variableCosts: data.variable_costs || [],
+    debts: data.debts || [],
+    creditCards: data.credit_cards || [],
+    assets: data.assets || { savings: 0, investments: 0, other: 0 },
+    monthlyIncome: parseFloat(data.monthly_income),
+    monthlyFixedCosts: parseFloat(data.monthly_fixed_costs),
+    monthlyVariableCosts: parseFloat(data.monthly_variable_costs),
+    totalDebt: parseFloat(data.total_debt),
+    totalAssets: parseFloat(data.total_assets),
+    netWorth: parseFloat(data.net_worth),
+    healthScore: data.health_score,
+    note: data.note,
+  };
+}
+
+export async function deleteFinancialSnapshot(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('financial_snapshots')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting financial snapshot:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// YEARLY INCOME RECORDS
+// ============================================
+
+export async function getYearlyIncomeRecords(): Promise<YearlyIncomeRecord[]> {
+  const { data, error } = await supabase
+    .from('yearly_income_records')
+    .select('*')
+    .order('year', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching yearly income records:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    year: row.year,
+    baseSalary: parseFloat(row.base_salary || 0),
+    bonusQ1: parseFloat(row.bonus_q1 || 0),
+    bonusQ2: parseFloat(row.bonus_q2 || 0),
+    bonusQ3: parseFloat(row.bonus_q3 || 0),
+    bonusQ4: parseFloat(row.bonus_q4 || 0),
+    gifts: parseFloat(row.gifts || 0),
+    otherIncome: parseFloat(row.other_income || 0),
+    note: row.note,
+  }));
+}
+
+export async function addYearlyIncomeRecord(record: Omit<YearlyIncomeRecord, 'id'>): Promise<YearlyIncomeRecord | null> {
+  const { data, error } = await supabase
+    .from('yearly_income_records')
+    .insert({
+      year: record.year,
+      base_salary: record.baseSalary,
+      bonus_q1: record.bonusQ1,
+      bonus_q2: record.bonusQ2,
+      bonus_q3: record.bonusQ3,
+      bonus_q4: record.bonusQ4,
+      gifts: record.gifts,
+      other_income: record.otherIncome,
+      note: record.note,
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Error adding yearly income record:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    year: data.year,
+    baseSalary: parseFloat(data.base_salary || 0),
+    bonusQ1: parseFloat(data.bonus_q1 || 0),
+    bonusQ2: parseFloat(data.bonus_q2 || 0),
+    bonusQ3: parseFloat(data.bonus_q3 || 0),
+    bonusQ4: parseFloat(data.bonus_q4 || 0),
+    gifts: parseFloat(data.gifts || 0),
+    otherIncome: parseFloat(data.other_income || 0),
+    note: data.note,
+  };
+}
+
+export async function updateYearlyIncomeRecord(record: YearlyIncomeRecord): Promise<boolean> {
+  const { error } = await supabase
+    .from('yearly_income_records')
+    .update({
+      year: record.year,
+      base_salary: record.baseSalary,
+      bonus_q1: record.bonusQ1,
+      bonus_q2: record.bonusQ2,
+      bonus_q3: record.bonusQ3,
+      bonus_q4: record.bonusQ4,
+      gifts: record.gifts,
+      other_income: record.otherIncome,
+      note: record.note,
+    })
+    .eq('id', record.id);
+
+  if (error) {
+    console.error('Error updating yearly income record:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteYearlyIncomeRecord(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('yearly_income_records')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting yearly income record:', error);
     return false;
   }
   return true;

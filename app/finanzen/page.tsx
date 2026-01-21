@@ -10,6 +10,7 @@ import {
   ChartPieIcon,
   BuildingLibraryIcon,
   WalletIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import { useSharedFinancialProfile } from '@/contexts/FinancialProfileContext';
 import Card, { CardHeader } from '@/components/ui/Card';
@@ -24,11 +25,12 @@ import DebtForm from '@/components/finanzen/DebtForm';
 import AssetsForm from '@/components/finanzen/AssetsForm';
 import CreditCardForm from '@/components/finanzen/CreditCardForm';
 import CreditCardBalanceForm from '@/components/finanzen/CreditCardBalanceForm';
+import HistoryTab from '@/components/finanzen/HistoryTab';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import { IncomeSource, FixedCost, VariableCostEstimate, Debt, Assets, QuarterlyBonusStatus, CreditCard, CreditCardBalance } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
-type TabType = 'uebersicht' | 'einnahmen' | 'fixkosten' | 'variable' | 'schulden' | 'kreditkarten' | 'vermoegen';
+type TabType = 'uebersicht' | 'einnahmen' | 'fixkosten' | 'variable' | 'schulden' | 'kreditkarten' | 'vermoegen' | 'historie';
 
 export default function FinanzenPage() {
   const [activeTab, setActiveTab] = useState<TabType>('uebersicht');
@@ -95,6 +97,7 @@ export default function FinanzenPage() {
     { id: 'schulden' as TabType, label: 'Schulden', icon: BuildingLibraryIcon },
     { id: 'kreditkarten' as TabType, label: 'Kreditkarten', icon: CreditCardIcon },
     { id: 'vermoegen' as TabType, label: 'Vermögen', icon: WalletIcon },
+    { id: 'historie' as TabType, label: 'Historie', icon: ClockIcon },
   ];
 
   const handleAddClick = () => {
@@ -830,6 +833,27 @@ export default function FinanzenPage() {
               </div>
             </div>
           </Card>
+        )}
+
+        {activeTab === 'historie' && (
+          <HistoryTab
+            currentSnapshot={{
+              snapshotDateISO: new Date().toISOString(),
+              incomeSources,
+              fixedCosts,
+              variableCosts,
+              debts,
+              creditCards,
+              assets,
+              monthlyIncome,
+              monthlyFixedCosts,
+              monthlyVariableCosts,
+              totalDebt,
+              totalAssets,
+              netWorth,
+              healthScore,
+            }}
+          />
         )}
       </div>
 

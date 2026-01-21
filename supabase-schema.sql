@@ -221,3 +221,63 @@ ALTER TABLE credit_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE credit_card_balances ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all" ON credit_cards FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all" ON credit_card_balances FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================
+-- FINANCIAL SNAPSHOTS
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS financial_snapshots (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  snapshot_date_iso TEXT NOT NULL,
+  name TEXT,
+
+  -- Rohdaten als JSONB
+  income_sources JSONB NOT NULL,
+  fixed_costs JSONB NOT NULL,
+  variable_costs JSONB NOT NULL,
+  debts JSONB NOT NULL,
+  credit_cards JSONB NOT NULL,
+  assets JSONB NOT NULL,
+
+  -- Berechnete Werte zum Zeitpunkt
+  monthly_income DECIMAL(12,2) NOT NULL,
+  monthly_fixed_costs DECIMAL(12,2) NOT NULL,
+  monthly_variable_costs DECIMAL(12,2) NOT NULL,
+  total_debt DECIMAL(12,2) NOT NULL,
+  total_assets DECIMAL(12,2) NOT NULL,
+  net_worth DECIMAL(12,2) NOT NULL,
+  health_score INTEGER NOT NULL,
+
+  note TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_snapshots_date ON financial_snapshots(snapshot_date_iso DESC);
+
+ALTER TABLE financial_snapshots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON financial_snapshots FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================
+-- YEARLY INCOME RECORDS
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS yearly_income_records (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  year INTEGER NOT NULL UNIQUE,
+
+  base_salary DECIMAL(12,2) DEFAULT 0,
+  bonus_q1 DECIMAL(12,2) DEFAULT 0,
+  bonus_q2 DECIMAL(12,2) DEFAULT 0,
+  bonus_q3 DECIMAL(12,2) DEFAULT 0,
+  bonus_q4 DECIMAL(12,2) DEFAULT 0,
+  gifts DECIMAL(12,2) DEFAULT 0,
+  other_income DECIMAL(12,2) DEFAULT 0,
+
+  note TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_yearly_income_year ON yearly_income_records(year DESC);
+
+ALTER TABLE yearly_income_records ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON yearly_income_records FOR ALL USING (true) WITH CHECK (true);

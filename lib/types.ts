@@ -280,3 +280,48 @@ export interface CreditCardBalance {
   recordedAtISO: string;
   note?: string;
 }
+
+// ============================================
+// FINANCIAL SNAPSHOTS
+// ============================================
+
+export interface FinancialSnapshot {
+  id: string;
+  createdAtISO: string;
+  snapshotDateISO: string;
+  name?: string;
+
+  incomeSources: IncomeSource[];
+  fixedCosts: FixedCost[];
+  variableCosts: VariableCostEstimate[];
+  debts: Debt[];
+  creditCards: CreditCard[];
+  assets: Assets;
+
+  monthlyIncome: number;
+  monthlyFixedCosts: number;
+  monthlyVariableCosts: number;
+  totalDebt: number;
+  totalAssets: number;
+  netWorth: number;
+  healthScore: number;
+
+  note?: string;
+}
+
+// ============================================
+// YEARLY INCOME RECORDS
+// ============================================
+
+export interface YearlyIncomeRecord {
+  id: string;
+  year: number;
+  baseSalary: number;
+  bonusQ1: number;
+  bonusQ2: number;
+  bonusQ3: number;
+  bonusQ4: number;
+  gifts: number;
+  otherIncome: number;
+  note?: string;
+}
