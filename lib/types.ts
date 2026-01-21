@@ -285,20 +285,34 @@ export interface CreditCardBalance {
 // FINANCIAL SNAPSHOTS
 // ============================================
 
+export interface QuarterlyBonusOverview {
+  totalBonusPerQuarter: number;
+  confirmedQuarters: QuarterlyBonusStatus;
+  confirmedCount: number;
+  totalConfirmedBonus: number;
+  totalPotentialBonus: number;
+}
+
 export interface FinancialSnapshot {
   id: string;
   createdAtISO: string;
   snapshotDateISO: string;
   name?: string;
 
+  // Rohdaten
   incomeSources: IncomeSource[];
   fixedCosts: FixedCost[];
   variableCosts: VariableCostEstimate[];
   debts: Debt[];
   creditCards: CreditCard[];
   assets: Assets;
+  transactions: Transaction[];
 
+  // Berechnete Werte
   monthlyIncome: number;
+  monthlyIncomeWithoutBonus: number;
+  monthlyBonusIncome: number;
+  quarterlyBonusOverview: QuarterlyBonusOverview | null;
   monthlyFixedCosts: number;
   monthlyVariableCosts: number;
   totalDebt: number;

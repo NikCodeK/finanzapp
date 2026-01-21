@@ -27,6 +27,7 @@ import CreditCardForm from '@/components/finanzen/CreditCardForm';
 import CreditCardBalanceForm from '@/components/finanzen/CreditCardBalanceForm';
 import HistoryTab from '@/components/finanzen/HistoryTab';
 import { useCreditCards } from '@/hooks/useCreditCards';
+import { useTransactions } from '@/hooks/useTransactions';
 import { IncomeSource, FixedCost, VariableCostEstimate, Debt, Assets, QuarterlyBonusStatus, CreditCard, CreditCardBalance } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -88,6 +89,11 @@ export default function FinanzenPage() {
     addBalance,
     isLoading: creditCardsLoading,
   } = useCreditCards();
+
+  const {
+    transactions,
+    isLoading: transactionsLoading,
+  } = useTransactions({ pageSize: 100 });
 
   const tabs = [
     { id: 'uebersicht' as TabType, label: 'Übersicht', icon: ChartPieIcon },
@@ -845,7 +851,11 @@ export default function FinanzenPage() {
               debts,
               creditCards,
               assets,
+              transactions,
               monthlyIncome,
+              monthlyIncomeWithoutBonus,
+              monthlyBonusIncome,
+              quarterlyBonusOverview,
               monthlyFixedCosts,
               monthlyVariableCosts,
               totalDebt,

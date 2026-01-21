@@ -13,6 +13,10 @@ import {
   BuildingLibraryIcon,
   WalletIcon,
   ReceiptPercentIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface SnapshotDetailViewProps {
@@ -87,6 +91,15 @@ export default function SnapshotDetailView({
     });
   };
 
+  const formatShortDate = (dateISO: string) => {
+    const date = new Date(dateISO);
+    return date.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+    });
+  };
+
   const totalCreditCardDebt = snapshot.creditCards.reduce(
     (sum, card) => sum + (card.currentBalance || 0),
     0
@@ -97,8 +110,14 @@ export default function SnapshotDetailView({
     ? (availableIncome / snapshot.monthlyIncome) * 100
     : 0;
 
+  // Transaction summary
+  const incomeTransactions = snapshot.transactions?.filter(t => t.type === 'income') || [];
+  const expenseTransactions = snapshot.transactions?.filter(t => t.type === 'expense') || [];
+  const totalTransactionIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalTransactionExpense = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
+
   return (
-    <div className="space-y-6 max-h-[80vh] overflow-y-auto">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between sticky top-0 bg-white pb-2">
         <div>
@@ -137,46 +156,83 @@ export default function SnapshotDetailView({
         </div>
       </div>
 
+      {/* Quartalsbonus-Status */}
+      {snapshot.quarterlyBonusOverview && (
+        <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+          <h4 className="font-medium text-emerald-800 mb-3">Quartalsbonus-Status</h4>
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map((quarter) => {
+              const isConfirmed = snapshot.quarterlyBonusOverview?.confirmedQuarters[quarter];
+              return (
+                <div
+                  key={quarter}
+                  className={`flex flex-col items-center p-2 rounded-lg ${
+                    isConfirmed
+                      ? 'bg-emerald-100 border-2 border-emerald-400'
+                      : 'bg-slate-100 border-2 border-slate-200'
+                  }`}
+                >
+                  <span className={`text-sm font-bold ${isConfirmed ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {quarter}
+                  </span>
+                  {isConfirmed ? (
+                    <CheckCircleIcon className="h-5 w-5 text-emerald-500 mt-1" />
+                  ) : (
+                    <XCircleIcon className="h-5 w-5 text-slate-300 mt-1" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-emerald-600">Bestätigt:</span>
+              <span className="font-medium text-emerald-700">
+                {formatCurrency(snapshot.quarterlyBonusOverview.totalConfirmedBonus)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Potenzial:</span>
+              <span className="font-medium text-slate-600">
+                {formatCurrency(snapshot.quarterlyBonusOverview.totalPotentialBonus)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Einkommen Aufschlüsselung */}
+      <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+        <h4 className="font-medium text-emerald-800 mb-3">Monatliches Einkommen</h4>
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-emerald-600">Basis (ohne Bonus)</span>
+            <span className="font-medium text-emerald-700">
+              {formatCurrency(snapshot.monthlyIncomeWithoutBonus || snapshot.monthlyIncome)}
+            </span>
+          </div>
+          {(snapshot.monthlyBonusIncome || 0) > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-emerald-600">+ Bestätigter Bonus-Anteil</span>
+              <span className="font-medium text-emerald-700">
+                {formatCurrency(snapshot.monthlyBonusIncome || 0)}
+              </span>
+            </div>
+          )}
+          <div className="border-t border-emerald-200 pt-2 flex justify-between text-sm font-semibold">
+            <span className="text-emerald-700">Gesamt</span>
+            <span className="text-emerald-800">{formatCurrency(snapshot.monthlyIncome)}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Übersicht Kennzahlen */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-          <p className="text-sm text-emerald-600">Monatl. Einkommen</p>
-          <p className="text-xl font-bold text-emerald-700">
-            {formatCurrency(snapshot.monthlyIncome)}
-          </p>
-        </div>
         <div className="p-4 bg-red-50 rounded-lg border border-red-200">
           <p className="text-sm text-red-600">Monatl. Ausgaben</p>
           <p className="text-xl font-bold text-red-700">
             {formatCurrency(snapshot.monthlyFixedCosts + snapshot.monthlyVariableCosts)}
           </p>
-        </div>
-        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-sm text-blue-600">Vermögen gesamt</p>
-          <p className="text-xl font-bold text-blue-700">
-            {formatCurrency(snapshot.totalAssets)}
-          </p>
-        </div>
-        <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-          <p className="text-sm text-orange-600">Schulden gesamt</p>
-          <p className="text-xl font-bold text-orange-700">
-            {formatCurrency(snapshot.totalDebt)}
-          </p>
-        </div>
-      </div>
-
-      {/* Nettovermögen & Sparquote */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className={`p-4 rounded-lg border ${
-          snapshot.netWorth >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
-        }`}>
-          <p className={`text-sm ${snapshot.netWorth >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-            Nettovermögen
-          </p>
-          <p className={`text-xl font-bold ${snapshot.netWorth >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-            {formatCurrency(snapshot.netWorth)}
-          </p>
-          <p className="text-xs text-slate-400 mt-1">Vermögen - Schulden</p>
         </div>
         <div className={`p-4 rounded-lg border ${
           savingsRate >= 20 ? 'bg-emerald-50 border-emerald-200' :
@@ -194,7 +250,35 @@ export default function SnapshotDetailView({
           }`}>
             {savingsRate.toFixed(1)}%
           </p>
-          <p className="text-xs text-slate-400 mt-1">{formatCurrency(availableIncome)} verfügbar</p>
+        </div>
+        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <p className="text-sm text-blue-600">Vermögen gesamt</p>
+          <p className="text-xl font-bold text-blue-700">
+            {formatCurrency(snapshot.totalAssets)}
+          </p>
+        </div>
+        <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+          <p className="text-sm text-orange-600">Schulden gesamt</p>
+          <p className="text-xl font-bold text-orange-700">
+            {formatCurrency(snapshot.totalDebt)}
+          </p>
+        </div>
+      </div>
+
+      {/* Nettovermögen */}
+      <div className={`p-4 rounded-lg border ${
+        snapshot.netWorth >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
+      }`}>
+        <div className="flex justify-between items-center">
+          <div>
+            <p className={`text-sm font-medium ${snapshot.netWorth >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              Nettovermögen
+            </p>
+            <p className="text-xs text-slate-400">Vermögen - Schulden</p>
+          </div>
+          <p className={`text-2xl font-bold ${snapshot.netWorth >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+            {formatCurrency(snapshot.netWorth)}
+          </p>
         </div>
       </div>
 
@@ -213,10 +297,6 @@ export default function SnapshotDetailView({
           <div className="flex justify-between text-sm">
             <span className="text-blue-600">Sonstiges</span>
             <span className="font-medium text-blue-700">{formatCurrency(snapshot.assets.other)}</span>
-          </div>
-          <div className="border-t border-blue-200 pt-2 flex justify-between text-sm font-semibold">
-            <span className="text-blue-700">Gesamt</span>
-            <span className="text-blue-800">{formatCurrency(snapshot.totalAssets)}</span>
           </div>
         </div>
       </div>
@@ -244,6 +324,60 @@ export default function SnapshotDetailView({
       <div className="space-y-3">
         <h4 className="font-medium text-slate-900 text-lg">Detaillierte Aufschlüsselung</h4>
 
+        {/* Transaktionen */}
+        {snapshot.transactions && snapshot.transactions.length > 0 && (
+          <CollapsibleSection
+            title="Transaktionen"
+            icon={<ArrowTrendingUpIcon className="h-6 w-6 text-cyan-500" />}
+            count={snapshot.transactions.length}
+            colorClass="bg-cyan-50 border-cyan-200"
+            defaultOpen={false}
+          >
+            <div className="space-y-3 mt-3">
+              {/* Transaction summary */}
+              <div className="grid grid-cols-2 gap-2 p-3 bg-white rounded-lg border border-cyan-100">
+                <div>
+                  <p className="text-xs text-emerald-600">Einnahmen</p>
+                  <p className="font-semibold text-emerald-700">{formatCurrency(totalTransactionIncome)}</p>
+                  <p className="text-xs text-slate-400">{incomeTransactions.length} Transaktionen</p>
+                </div>
+                <div>
+                  <p className="text-xs text-red-600">Ausgaben</p>
+                  <p className="font-semibold text-red-700">{formatCurrency(totalTransactionExpense)}</p>
+                  <p className="text-xs text-slate-400">{expenseTransactions.length} Transaktionen</p>
+                </div>
+              </div>
+
+              {/* Recent transactions */}
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {snapshot.transactions.slice(0, 20).map((transaction, index) => (
+                  <div key={index} className="p-2 bg-white rounded-lg border border-cyan-100 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      {transaction.type === 'income' ? (
+                        <ArrowTrendingUpIcon className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <ArrowTrendingDownIcon className="h-4 w-4 text-red-500" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{transaction.category}</p>
+                        <p className="text-xs text-slate-400">{formatShortDate(transaction.dateISO)}</p>
+                      </div>
+                    </div>
+                    <p className={`font-semibold ${transaction.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                    </p>
+                  </div>
+                ))}
+                {snapshot.transactions.length > 20 && (
+                  <p className="text-xs text-slate-400 text-center py-2">
+                    ... und {snapshot.transactions.length - 20} weitere Transaktionen
+                  </p>
+                )}
+              </div>
+            </div>
+          </CollapsibleSection>
+        )}
+
         {/* Einnahmequellen */}
         <CollapsibleSection
           title="Einnahmequellen"
@@ -267,6 +401,22 @@ export default function SnapshotDetailView({
                          source.frequency === 'jaehrlich' ? 'Jährlich' : 'Quartalsbonus'}
                         {!source.isActive && ' (Inaktiv)'}
                       </p>
+                      {source.frequency === 'quartalsbonus' && source.confirmedQuarters && (
+                        <div className="flex gap-1 mt-1">
+                          {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map((q) => (
+                            <span
+                              key={q}
+                              className={`text-xs px-1.5 py-0.5 rounded ${
+                                source.confirmedQuarters?.[q]
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-slate-100 text-slate-400'
+                              }`}
+                            >
+                              {q}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {source.note && <p className="text-xs text-slate-400 mt-1">{source.note}</p>}
                     </div>
                     <p className="font-semibold text-emerald-600">{formatCurrency(source.amount)}</p>

@@ -168,6 +168,7 @@ export default function HistoryTab({ currentSnapshot }: HistoryTabProps) {
         isOpen={!!viewingSnapshot}
         onClose={() => setViewingSnapshot(null)}
         title=""
+        size="lg"
       >
         {viewingSnapshot && (
           <SnapshotDetailView

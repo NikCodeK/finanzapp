@@ -239,9 +239,13 @@ CREATE TABLE IF NOT EXISTS financial_snapshots (
   debts JSONB NOT NULL,
   credit_cards JSONB NOT NULL,
   assets JSONB NOT NULL,
+  transactions JSONB DEFAULT '[]',
 
   -- Berechnete Werte zum Zeitpunkt
   monthly_income DECIMAL(12,2) NOT NULL,
+  monthly_income_without_bonus DECIMAL(12,2) DEFAULT 0,
+  monthly_bonus_income DECIMAL(12,2) DEFAULT 0,
+  quarterly_bonus_overview JSONB DEFAULT NULL,
   monthly_fixed_costs DECIMAL(12,2) NOT NULL,
   monthly_variable_costs DECIMAL(12,2) NOT NULL,
   total_debt DECIMAL(12,2) NOT NULL,
