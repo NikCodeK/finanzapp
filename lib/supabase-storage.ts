@@ -18,6 +18,13 @@ import {
   CreditCardBalance,
   FinancialSnapshot,
   YearlyIncomeRecord,
+  Subscription,
+  PlannedPurchase,
+  LifeScenario,
+  EventBudget,
+  Investment,
+  InvestmentTransaction,
+  SavingsPlan,
 } from './types';
 
 type TransactionPage = {
@@ -1504,6 +1511,704 @@ export async function deleteYearlyIncomeRecord(id: string): Promise<boolean> {
 
   if (error) {
     console.error('Error deleting yearly income record:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// SUBSCRIPTIONS (Abos)
+// ============================================
+
+export async function getSubscriptions(): Promise<Subscription[]> {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('id, name, provider, amount, frequency, category, start_date_iso, cancellation_period_days, next_billing_date_iso, auto_renew, is_active, note')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching subscriptions:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    provider: row.provider,
+    amount: parseFloat(row.amount),
+    frequency: row.frequency,
+    category: row.category,
+    startDateISO: row.start_date_iso,
+    cancellationPeriodDays: row.cancellation_period_days || 30,
+    nextBillingDateISO: row.next_billing_date_iso,
+    autoRenew: row.auto_renew ?? true,
+    isActive: row.is_active ?? true,
+    note: row.note,
+  }));
+}
+
+export async function addSubscription(subscription: Omit<Subscription, 'id'>): Promise<Subscription | null> {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .insert({
+      name: subscription.name,
+      provider: subscription.provider,
+      amount: subscription.amount,
+      frequency: subscription.frequency,
+      category: subscription.category,
+      start_date_iso: subscription.startDateISO,
+      cancellation_period_days: subscription.cancellationPeriodDays,
+      next_billing_date_iso: subscription.nextBillingDateISO,
+      auto_renew: subscription.autoRenew,
+      is_active: subscription.isActive,
+      note: subscription.note,
+    })
+    .select('id, name, provider, amount, frequency, category, start_date_iso, cancellation_period_days, next_billing_date_iso, auto_renew, is_active, note')
+    .single();
+
+  if (error) {
+    console.error('Error adding subscription:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    provider: data.provider,
+    amount: parseFloat(data.amount),
+    frequency: data.frequency,
+    category: data.category,
+    startDateISO: data.start_date_iso,
+    cancellationPeriodDays: data.cancellation_period_days || 30,
+    nextBillingDateISO: data.next_billing_date_iso,
+    autoRenew: data.auto_renew ?? true,
+    isActive: data.is_active ?? true,
+    note: data.note,
+  };
+}
+
+export async function updateSubscription(subscription: Subscription): Promise<boolean> {
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      name: subscription.name,
+      provider: subscription.provider,
+      amount: subscription.amount,
+      frequency: subscription.frequency,
+      category: subscription.category,
+      start_date_iso: subscription.startDateISO,
+      cancellation_period_days: subscription.cancellationPeriodDays,
+      next_billing_date_iso: subscription.nextBillingDateISO,
+      auto_renew: subscription.autoRenew,
+      is_active: subscription.isActive,
+      note: subscription.note,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscription.id);
+
+  if (error) {
+    console.error('Error updating subscription:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteSubscription(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('subscriptions')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting subscription:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// PLANNED PURCHASES (Geplante Anschaffungen)
+// ============================================
+
+export async function getPlannedPurchases(): Promise<PlannedPurchase[]> {
+  const { data, error } = await supabase
+    .from('planned_purchases')
+    .select('id, name, target_amount, current_amount, monthly_contribution, priority, target_date_iso, category, note, status')
+    .order('priority', { ascending: true })
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching planned purchases:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    targetAmount: parseFloat(row.target_amount),
+    currentAmount: parseFloat(row.current_amount || 0),
+    monthlyContribution: parseFloat(row.monthly_contribution || 0),
+    priority: row.priority as 1 | 2 | 3,
+    targetDateISO: row.target_date_iso,
+    category: row.category,
+    note: row.note,
+    status: row.status || 'aktiv',
+  }));
+}
+
+export async function addPlannedPurchase(purchase: Omit<PlannedPurchase, 'id'>): Promise<PlannedPurchase | null> {
+  const { data, error } = await supabase
+    .from('planned_purchases')
+    .insert({
+      name: purchase.name,
+      target_amount: purchase.targetAmount,
+      current_amount: purchase.currentAmount,
+      monthly_contribution: purchase.monthlyContribution,
+      priority: purchase.priority,
+      target_date_iso: purchase.targetDateISO,
+      category: purchase.category,
+      note: purchase.note,
+      status: purchase.status,
+    })
+    .select('id, name, target_amount, current_amount, monthly_contribution, priority, target_date_iso, category, note, status')
+    .single();
+
+  if (error) {
+    console.error('Error adding planned purchase:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    targetAmount: parseFloat(data.target_amount),
+    currentAmount: parseFloat(data.current_amount || 0),
+    monthlyContribution: parseFloat(data.monthly_contribution || 0),
+    priority: data.priority as 1 | 2 | 3,
+    targetDateISO: data.target_date_iso,
+    category: data.category,
+    note: data.note,
+    status: data.status || 'aktiv',
+  };
+}
+
+export async function updatePlannedPurchase(purchase: PlannedPurchase): Promise<boolean> {
+  const { error } = await supabase
+    .from('planned_purchases')
+    .update({
+      name: purchase.name,
+      target_amount: purchase.targetAmount,
+      current_amount: purchase.currentAmount,
+      monthly_contribution: purchase.monthlyContribution,
+      priority: purchase.priority,
+      target_date_iso: purchase.targetDateISO,
+      category: purchase.category,
+      note: purchase.note,
+      status: purchase.status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', purchase.id);
+
+  if (error) {
+    console.error('Error updating planned purchase:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deletePlannedPurchase(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('planned_purchases')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting planned purchase:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// LIFE SCENARIOS (Lebens-Szenarien)
+// ============================================
+
+export async function getLifeScenarios(): Promise<LifeScenario[]> {
+  const { data, error } = await supabase
+    .from('life_scenarios')
+    .select('id, name, type, income_change, expense_changes, one_time_costs, start_date_iso, duration_months, note')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching life scenarios:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    incomeChange: parseFloat(row.income_change || 0),
+    expenseChanges: row.expense_changes || [],
+    oneTimeCosts: parseFloat(row.one_time_costs || 0),
+    startDateISO: row.start_date_iso,
+    durationMonths: row.duration_months,
+    note: row.note,
+  }));
+}
+
+export async function addLifeScenario(scenario: Omit<LifeScenario, 'id'>): Promise<LifeScenario | null> {
+  const { data, error } = await supabase
+    .from('life_scenarios')
+    .insert({
+      name: scenario.name,
+      type: scenario.type,
+      income_change: scenario.incomeChange,
+      expense_changes: scenario.expenseChanges,
+      one_time_costs: scenario.oneTimeCosts,
+      start_date_iso: scenario.startDateISO,
+      duration_months: scenario.durationMonths,
+      note: scenario.note,
+    })
+    .select('id, name, type, income_change, expense_changes, one_time_costs, start_date_iso, duration_months, note')
+    .single();
+
+  if (error) {
+    console.error('Error adding life scenario:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    type: data.type,
+    incomeChange: parseFloat(data.income_change || 0),
+    expenseChanges: data.expense_changes || [],
+    oneTimeCosts: parseFloat(data.one_time_costs || 0),
+    startDateISO: data.start_date_iso,
+    durationMonths: data.duration_months,
+    note: data.note,
+  };
+}
+
+export async function updateLifeScenario(scenario: LifeScenario): Promise<boolean> {
+  const { error } = await supabase
+    .from('life_scenarios')
+    .update({
+      name: scenario.name,
+      type: scenario.type,
+      income_change: scenario.incomeChange,
+      expense_changes: scenario.expenseChanges,
+      one_time_costs: scenario.oneTimeCosts,
+      start_date_iso: scenario.startDateISO,
+      duration_months: scenario.durationMonths,
+      note: scenario.note,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', scenario.id);
+
+  if (error) {
+    console.error('Error updating life scenario:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteLifeScenario(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('life_scenarios')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting life scenario:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// EVENT BUDGETS (Event-Budgets)
+// ============================================
+
+export async function getEventBudgets(): Promise<EventBudget[]> {
+  const { data, error } = await supabase
+    .from('event_budgets')
+    .select('id, name, target_amount, current_amount, event_date_iso, category, note, status')
+    .order('event_date_iso', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching event budgets:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    targetAmount: parseFloat(row.target_amount),
+    currentAmount: parseFloat(row.current_amount || 0),
+    eventDateISO: row.event_date_iso,
+    category: row.category,
+    note: row.note,
+    status: row.status || 'aktiv',
+  }));
+}
+
+export async function addEventBudget(budget: Omit<EventBudget, 'id'>): Promise<EventBudget | null> {
+  const { data, error } = await supabase
+    .from('event_budgets')
+    .insert({
+      name: budget.name,
+      target_amount: budget.targetAmount,
+      current_amount: budget.currentAmount,
+      event_date_iso: budget.eventDateISO,
+      category: budget.category,
+      note: budget.note,
+      status: budget.status,
+    })
+    .select('id, name, target_amount, current_amount, event_date_iso, category, note, status')
+    .single();
+
+  if (error) {
+    console.error('Error adding event budget:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    targetAmount: parseFloat(data.target_amount),
+    currentAmount: parseFloat(data.current_amount || 0),
+    eventDateISO: data.event_date_iso,
+    category: data.category,
+    note: data.note,
+    status: data.status || 'aktiv',
+  };
+}
+
+export async function updateEventBudget(budget: EventBudget): Promise<boolean> {
+  const { error } = await supabase
+    .from('event_budgets')
+    .update({
+      name: budget.name,
+      target_amount: budget.targetAmount,
+      current_amount: budget.currentAmount,
+      event_date_iso: budget.eventDateISO,
+      category: budget.category,
+      note: budget.note,
+      status: budget.status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', budget.id);
+
+  if (error) {
+    console.error('Error updating event budget:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteEventBudget(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('event_budgets')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting event budget:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// INVESTMENTS
+// ============================================
+
+export async function getInvestments(): Promise<Investment[]> {
+  const { data, error } = await supabase
+    .from('investments')
+    .select('id, name, type, symbol, isin, quantity, purchase_price, current_price, purchase_date_iso, broker, note, is_active')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching investments:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    symbol: row.symbol,
+    isin: row.isin,
+    quantity: parseFloat(row.quantity || 0),
+    purchasePrice: parseFloat(row.purchase_price || 0),
+    currentPrice: parseFloat(row.current_price || 0),
+    purchaseDateISO: row.purchase_date_iso,
+    broker: row.broker,
+    note: row.note,
+    isActive: row.is_active ?? true,
+  }));
+}
+
+export async function addInvestment(investment: Omit<Investment, 'id'>): Promise<Investment | null> {
+  const { data, error } = await supabase
+    .from('investments')
+    .insert({
+      name: investment.name,
+      type: investment.type,
+      symbol: investment.symbol,
+      isin: investment.isin,
+      quantity: investment.quantity,
+      purchase_price: investment.purchasePrice,
+      current_price: investment.currentPrice,
+      purchase_date_iso: investment.purchaseDateISO,
+      broker: investment.broker,
+      note: investment.note,
+      is_active: investment.isActive,
+    })
+    .select('id, name, type, symbol, isin, quantity, purchase_price, current_price, purchase_date_iso, broker, note, is_active')
+    .single();
+
+  if (error) {
+    console.error('Error adding investment:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    type: data.type,
+    symbol: data.symbol,
+    isin: data.isin,
+    quantity: parseFloat(data.quantity || 0),
+    purchasePrice: parseFloat(data.purchase_price || 0),
+    currentPrice: parseFloat(data.current_price || 0),
+    purchaseDateISO: data.purchase_date_iso,
+    broker: data.broker,
+    note: data.note,
+    isActive: data.is_active ?? true,
+  };
+}
+
+export async function updateInvestment(investment: Investment): Promise<boolean> {
+  const { error } = await supabase
+    .from('investments')
+    .update({
+      name: investment.name,
+      type: investment.type,
+      symbol: investment.symbol,
+      isin: investment.isin,
+      quantity: investment.quantity,
+      purchase_price: investment.purchasePrice,
+      current_price: investment.currentPrice,
+      purchase_date_iso: investment.purchaseDateISO,
+      broker: investment.broker,
+      note: investment.note,
+      is_active: investment.isActive,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', investment.id);
+
+  if (error) {
+    console.error('Error updating investment:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteInvestment(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('investments')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting investment:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// INVESTMENT TRANSACTIONS
+// ============================================
+
+export async function getInvestmentTransactions(investmentId?: string): Promise<InvestmentTransaction[]> {
+  let query = supabase
+    .from('investment_transactions')
+    .select('id, investment_id, type, quantity, price, total_amount, fees, date_iso, note')
+    .order('date_iso', { ascending: false });
+
+  if (investmentId) {
+    query = query.eq('investment_id', investmentId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error fetching investment transactions:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    investmentId: row.investment_id,
+    type: row.type,
+    quantity: row.quantity ? parseFloat(row.quantity) : undefined,
+    price: row.price ? parseFloat(row.price) : undefined,
+    totalAmount: row.total_amount ? parseFloat(row.total_amount) : undefined,
+    fees: parseFloat(row.fees || 0),
+    dateISO: row.date_iso,
+    note: row.note,
+  }));
+}
+
+export async function addInvestmentTransaction(transaction: Omit<InvestmentTransaction, 'id'>): Promise<InvestmentTransaction | null> {
+  const { data, error } = await supabase
+    .from('investment_transactions')
+    .insert({
+      investment_id: transaction.investmentId,
+      type: transaction.type,
+      quantity: transaction.quantity,
+      price: transaction.price,
+      total_amount: transaction.totalAmount,
+      fees: transaction.fees,
+      date_iso: transaction.dateISO,
+      note: transaction.note,
+    })
+    .select('id, investment_id, type, quantity, price, total_amount, fees, date_iso, note')
+    .single();
+
+  if (error) {
+    console.error('Error adding investment transaction:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    investmentId: data.investment_id,
+    type: data.type,
+    quantity: data.quantity ? parseFloat(data.quantity) : undefined,
+    price: data.price ? parseFloat(data.price) : undefined,
+    totalAmount: data.total_amount ? parseFloat(data.total_amount) : undefined,
+    fees: parseFloat(data.fees || 0),
+    dateISO: data.date_iso,
+    note: data.note,
+  };
+}
+
+export async function deleteInvestmentTransaction(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('investment_transactions')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting investment transaction:', error);
+    return false;
+  }
+  return true;
+}
+
+// ============================================
+// SAVINGS PLANS (Sparpläne)
+// ============================================
+
+export async function getSavingsPlans(): Promise<SavingsPlan[]> {
+  const { data, error } = await supabase
+    .from('savings_plans')
+    .select('id, investment_id, name, amount, frequency, execution_day, start_date_iso, end_date_iso, is_active, note')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching savings plans:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    investmentId: row.investment_id,
+    name: row.name,
+    amount: parseFloat(row.amount),
+    frequency: row.frequency,
+    executionDay: row.execution_day || 1,
+    startDateISO: row.start_date_iso,
+    endDateISO: row.end_date_iso,
+    isActive: row.is_active ?? true,
+    note: row.note,
+  }));
+}
+
+export async function addSavingsPlan(plan: Omit<SavingsPlan, 'id'>): Promise<SavingsPlan | null> {
+  const { data, error } = await supabase
+    .from('savings_plans')
+    .insert({
+      investment_id: plan.investmentId,
+      name: plan.name,
+      amount: plan.amount,
+      frequency: plan.frequency,
+      execution_day: plan.executionDay,
+      start_date_iso: plan.startDateISO,
+      end_date_iso: plan.endDateISO,
+      is_active: plan.isActive,
+      note: plan.note,
+    })
+    .select('id, investment_id, name, amount, frequency, execution_day, start_date_iso, end_date_iso, is_active, note')
+    .single();
+
+  if (error) {
+    console.error('Error adding savings plan:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    investmentId: data.investment_id,
+    name: data.name,
+    amount: parseFloat(data.amount),
+    frequency: data.frequency,
+    executionDay: data.execution_day || 1,
+    startDateISO: data.start_date_iso,
+    endDateISO: data.end_date_iso,
+    isActive: data.is_active ?? true,
+    note: data.note,
+  };
+}
+
+export async function updateSavingsPlan(plan: SavingsPlan): Promise<boolean> {
+  const { error } = await supabase
+    .from('savings_plans')
+    .update({
+      investment_id: plan.investmentId,
+      name: plan.name,
+      amount: plan.amount,
+      frequency: plan.frequency,
+      execution_day: plan.executionDay,
+      start_date_iso: plan.startDateISO,
+      end_date_iso: plan.endDateISO,
+      is_active: plan.isActive,
+      note: plan.note,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', plan.id);
+
+  if (error) {
+    console.error('Error updating savings plan:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteSavingsPlan(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('savings_plans')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting savings plan:', error);
     return false;
   }
   return true;

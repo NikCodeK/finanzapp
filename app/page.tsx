@@ -6,6 +6,9 @@ import { useGoals } from '@/hooks/useGoals';
 import { useBudgets } from '@/hooks/useBudgets';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useCreditCards } from '@/hooks/useCreditCards';
+import { useSubscriptions } from '@/hooks/useSubscriptions';
+import { useInvestments } from '@/hooks/useInvestments';
+import { usePlanning } from '@/hooks/usePlanning';
 import KPICard from '@/components/KPICard';
 import Card, { CardHeader } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -23,6 +26,10 @@ import {
   XCircleIcon,
   ChartBarIcon,
   ExclamationTriangleIcon,
+  CreditCardIcon,
+  BellAlertIcon,
+  CurrencyEuroIcon,
+  ShoppingCartIcon,
 } from '@heroicons/react/24/outline';
 import { formatCurrency, getMonthRange, toDateISO, classNames } from '@/lib/utils';
 import { groupByCategory } from '@/lib/calculations';
@@ -55,6 +62,23 @@ export default function Dashboard() {
     averageUtilization,
     addBalance,
   } = useCreditCards();
+
+  // New features hooks
+  const {
+    monthlySubscriptionCost,
+    upcomingCancellations,
+    activeCount: activeSubscriptionCount,
+  } = useSubscriptions();
+
+  const {
+    portfolioMetrics,
+    monthlySavingsPlanAmount,
+  } = useInvestments();
+
+  const {
+    purchasesWithProjection,
+    activeEventBudgets,
+  } = usePlanning();
 
   // Get current month transactions for budget calculation
   const monthRange = getMonthRange(new Date());
@@ -336,6 +360,122 @@ export default function Dashboard() {
         onAddBalance={addBalance}
       />
 
+      {/* Neue Feature Widgets */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Abo-Widget */}
+        <Card>
+          <CardHeader
+            title="Abos"
+            action={
+              <Link href="/subscriptions">
+                <Button variant="ghost" size="sm">Details</Button>
+              </Link>
+            }
+          />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <CreditCardIcon className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Monatliche Kosten</p>
+                  <p className="text-xl font-bold text-slate-900">{formatCurrency(monthlySubscriptionCost)}</p>
+                </div>
+              </div>
+              <span className="text-sm text-slate-500">{activeSubscriptionCount} aktiv</span>
+            </div>
+            {upcomingCancellations.length > 0 && (
+              <div className="p-3 bg-orange-50 rounded-lg flex items-center gap-2">
+                <BellAlertIcon className="h-5 w-5 text-orange-500" />
+                <span className="text-sm text-orange-700">
+                  {upcomingCancellations.length} Abo(s) bald kündbar
+                </span>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Investment-Widget */}
+        <Card>
+          <CardHeader
+            title="Investments"
+            action={
+              <Link href="/investments">
+                <Button variant="ghost" size="sm">Details</Button>
+              </Link>
+            }
+          />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CurrencyEuroIcon className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Portfolio-Wert</p>
+                  <p className="text-xl font-bold text-slate-900">{formatCurrency(portfolioMetrics.totalValue)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Performance</span>
+              <span className={portfolioMetrics.totalGainLossPercent >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                {portfolioMetrics.totalGainLossPercent >= 0 ? '+' : ''}{portfolioMetrics.totalGainLossPercent.toFixed(2)}%
+              </span>
+            </div>
+            {monthlySavingsPlanAmount > 0 && (
+              <div className="p-3 bg-indigo-50 rounded-lg text-sm text-indigo-700">
+                Monatliche Sparpläne: {formatCurrency(monthlySavingsPlanAmount)}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Planung-Widget */}
+        <Card>
+          <CardHeader
+            title="Geplante Anschaffungen"
+            action={
+              <Link href="/planning">
+                <Button variant="ghost" size="sm">Details</Button>
+              </Link>
+            }
+          />
+          <div className="space-y-3">
+            {purchasesWithProjection.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-4">
+                Keine Anschaffungen geplant
+              </p>
+            ) : (
+              purchasesWithProjection.slice(0, 2).map((purchase) => (
+                <div key={purchase.id} className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-medium text-slate-900 text-sm">{purchase.name}</span>
+                    <span className="text-xs text-slate-500">
+                      {purchase.progress.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full ${purchase.isOnTrack === false ? 'bg-orange-500' : 'bg-indigo-500'}`}
+                      style={{ width: `${Math.min(purchase.progress, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+            {activeEventBudgets.length > 0 && (
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-xs text-slate-500">
+                  {activeEventBudgets.length} Event-Budget(s) aktiv
+                </p>
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
       {/* Ziele */}
       {activeGoals.length > 0 && (
         <Card>
@@ -383,29 +523,41 @@ export default function Dashboard() {
       )}
 
       {/* Schnellaktionen */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <Link href="/finanzen" className="block">
           <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
             <BanknotesIcon className="h-6 w-6 mx-auto text-indigo-500" />
             <p className="text-sm font-medium text-slate-700 mt-2">Finanzen</p>
           </div>
         </Link>
+        <Link href="/subscriptions" className="block">
+          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+            <CreditCardIcon className="h-6 w-6 mx-auto text-indigo-500" />
+            <p className="text-sm font-medium text-slate-700 mt-2">Abos</p>
+          </div>
+        </Link>
+        <Link href="/investments" className="block">
+          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+            <CurrencyEuroIcon className="h-6 w-6 mx-auto text-indigo-500" />
+            <p className="text-sm font-medium text-slate-700 mt-2">Investments</p>
+          </div>
+        </Link>
+        <Link href="/planning" className="block">
+          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+            <ShoppingCartIcon className="h-6 w-6 mx-auto text-indigo-500" />
+            <p className="text-sm font-medium text-slate-700 mt-2">Planung</p>
+          </div>
+        </Link>
+        <Link href="/analytics" className="block">
+          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+            <ChartBarIcon className="h-6 w-6 mx-auto text-indigo-500" />
+            <p className="text-sm font-medium text-slate-700 mt-2">Analyse</p>
+          </div>
+        </Link>
         <Link href={`/ziele/${new Date().getFullYear()}`} className="block">
           <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
             <FlagIcon className="h-6 w-6 mx-auto text-indigo-500" />
             <p className="text-sm font-medium text-slate-700 mt-2">Ziele</p>
-          </div>
-        </Link>
-        <Link href="/weekly" className="block">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
-            <WalletIcon className="h-6 w-6 mx-auto text-indigo-500" />
-            <p className="text-sm font-medium text-slate-700 mt-2">Wochenbericht</p>
-          </div>
-        </Link>
-        <Link href="/projection" className="block">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
-            <ArrowTrendingUpIcon className="h-6 w-6 mx-auto text-indigo-500" />
-            <p className="text-sm font-medium text-slate-700 mt-2">Prognose</p>
           </div>
         </Link>
       </div>
