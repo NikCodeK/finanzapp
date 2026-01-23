@@ -91,7 +91,7 @@ export default function MobileNav({ isOpen, onClose, onOpen }: MobileNavProps) {
   return (
     <>
       {/* Bottom Navigation Bar - visible on mobile */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 safe-area-bottom">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 safe-area-bottom-nav">
         <div className="flex items-center justify-around h-16">
           {bottomNavItems.map((item) => {
             const isActive = isItemActive(item.href);

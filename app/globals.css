@@ -19,6 +19,16 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+.safe-area-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+@media (display-mode: standalone) {
+  .safe-area-bottom-nav {
+    padding-bottom: max(calc(env(safe-area-inset-bottom) - 12px), 0px);
+  }
+}
+
 .safe-area-top {
   padding-top: env(safe-area-inset-top, 0);
 }
