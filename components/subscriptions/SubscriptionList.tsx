@@ -6,7 +6,6 @@ import Button from '@/components/ui/Button';
 import {
   PencilIcon,
   TrashIcon,
-  BellAlertIcon,
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -121,21 +120,11 @@ export default function SubscriptionList({
               </div>
             </div>
 
-            {/* Cancellation Warning */}
-            {cancellationInfo && (
-              <div
-                className={`mt-3 p-2 rounded flex items-center gap-2 ${
-                  cancellationInfo.isUrgent
-                    ? 'bg-red-50 text-red-700'
-                    : 'bg-orange-50 text-orange-700'
-                }`}
-              >
-                <BellAlertIcon className="h-4 w-4" />
-                <span className="text-sm">
-                  Kündigungsfrist endet in {cancellationInfo.daysLeft} Tagen
-                  ({formatDate(cancellationInfo.deadline.toISOString())})
-                </span>
-              </div>
+            {/* Cancellation Info - nur dezent anzeigen */}
+            {cancellationInfo && sub.cancellationPeriodDays > 7 && (
+              <p className="mt-2 text-xs text-slate-400">
+                Kündigungsfrist: {formatDate(cancellationInfo.deadline.toISOString())}
+              </p>
             )}
 
             {/* Next billing date */}

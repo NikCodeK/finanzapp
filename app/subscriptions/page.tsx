@@ -12,7 +12,6 @@ import { formatCurrency } from '@/lib/utils';
 import {
   PlusIcon,
   CreditCardIcon,
-  BellAlertIcon,
   ChartPieIcon,
 } from '@heroicons/react/24/outline';
 
@@ -25,7 +24,6 @@ export default function SubscriptionsPage() {
     deleteSubscription,
     monthlySubscriptionCost,
     yearlySubscriptionCost,
-    upcomingCancellations,
     subscriptionsByCategory,
     activeCount,
   } = useSubscriptions();
@@ -127,53 +125,21 @@ export default function SubscriptionsPage() {
 
         <Card>
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-lg ${upcomingCancellations.length > 0 ? 'bg-orange-100' : 'bg-slate-100'}`}>
-              <BellAlertIcon className={`h-6 w-6 ${upcomingCancellations.length > 0 ? 'text-orange-600' : 'text-slate-400'}`} />
+            <div className="p-3 bg-slate-100 rounded-lg">
+              <ChartPieIcon className="h-6 w-6 text-slate-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Kündigungsfrist</p>
+              <p className="text-sm text-slate-500">Kategorien</p>
               <p className="text-2xl font-bold text-slate-900">
-                {upcomingCancellations.length}
+                {Object.keys(subscriptionsByCategory).length}
               </p>
               <p className="text-xs text-slate-400">
-                Abos in den nächsten 30 Tagen kündbar
+                verschiedene Bereiche
               </p>
             </div>
           </div>
         </Card>
       </div>
-
-      {/* Cancellation Warnings */}
-      {upcomingCancellations.length > 0 && (
-        <Card>
-          <CardHeader
-            title="Bald kündbar"
-            subtitle="Diese Abos können bald gekündigt werden"
-          />
-          <div className="space-y-2">
-            {upcomingCancellations.map((sub) => (
-              <div
-                key={sub.id}
-                className={`p-3 rounded-lg flex justify-between items-center ${
-                  sub.daysUntilDeadline <= 7
-                    ? 'bg-red-50 border border-red-200'
-                    : 'bg-orange-50 border border-orange-200'
-                }`}
-              >
-                <div>
-                  <p className="font-medium text-slate-900">{sub.name}</p>
-                  <p className={`text-sm ${sub.daysUntilDeadline <= 7 ? 'text-red-600' : 'text-orange-600'}`}>
-                    Noch {sub.daysUntilDeadline} Tage bis zur Kündigungsfrist
-                  </p>
-                </div>
-                <p className="font-semibold text-slate-900">
-                  {formatCurrency(sub.amount)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {/* Category Overview */}
       {Object.keys(subscriptionsByCategory).length > 0 && (
