@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useCallback, useState } from 'react';
 import { AuthProvider, useAuth } from './AuthProvider';
 import { FinancialProfileProvider } from '@/contexts/FinancialProfileContext';
 import LoginScreen from './LoginScreen';
@@ -10,6 +10,8 @@ import MobileNav from './MobileNav';
 function AppContent({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const handleCloseMenu = useCallback(() => setMobileMenuOpen(false), []);
+  const handleOpenMenu = useCallback(() => setMobileMenuOpen(true), []);
 
   if (!isAuthenticated) {
     return <LoginScreen />;
@@ -26,8 +28,8 @@ function AppContent({ children }: { children: ReactNode }) {
         {/* Mobile Navigation */}
         <MobileNav
           isOpen={mobileMenuOpen}
-          onClose={() => setMobileMenuOpen(false)}
-          onOpen={() => setMobileMenuOpen(true)}
+          onClose={handleCloseMenu}
+          onOpen={handleOpenMenu}
         />
 
         {/* Main Content */}
