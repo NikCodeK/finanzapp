@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState, useEffect } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -63,6 +63,7 @@ interface MobileNavProps {
 export default function MobileNav({ isOpen, onClose, onOpen }: MobileNavProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
+  const lastOpenAtRef = useRef<number>(0);
 
   // Close drawer on route change
   useEffect(() => {
@@ -74,6 +75,17 @@ export default function MobileNav({ isOpen, onClose, onOpen }: MobileNavProps) {
       return pathname.startsWith('/ziele');
     }
     return pathname === href;
+  };
+
+  const handleOpen = () => {
+    lastOpenAtRef.current = Date.now();
+    onOpen();
+  };
+
+  const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.currentTarget !== event.target) return;
+    if (Date.now() - lastOpenAtRef.current < 300) return;
+    onClose();
   };
 
   return (
@@ -99,7 +111,7 @@ export default function MobileNav({ isOpen, onClose, onOpen }: MobileNavProps) {
           })}
           {/* Menu Button */}
           <button
-            onClick={onOpen}
+            onClick={handleOpen}
             className="flex flex-col items-center justify-center flex-1 h-full px-2 py-1 text-slate-500"
           >
             <Bars3Icon className="h-6 w-6" />
@@ -112,7 +124,7 @@ export default function MobileNav({ isOpen, onClose, onOpen }: MobileNavProps) {
       {isOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-50"
-          onClick={onClose}
+          onClick={handleOverlayClick}
         />
       )}
 
