@@ -19,7 +19,7 @@ function AppContent({ children }: { children: ReactNode }) {
 
   return (
     <FinancialProfileProvider>
-      <div className="flex min-h-[100dvh] bg-slate-50 safe-area-top">
+      <div className="flex h-[100dvh] bg-slate-50 safe-area-top overflow-hidden">
         {/* Desktop Sidebar - hidden on mobile */}
         <div className="hidden lg:block">
           <Sidebar />
