@@ -12,9 +12,9 @@ interface CardProps {
 export default function Card({ children, className, padding = 'md' }: CardProps) {
   const paddingStyles = {
     none: '',
-    sm: 'p-4',
-    md: 'p-6',
-    lg: 'p-8',
+    sm: 'p-3 sm:p-4',
+    md: 'p-4 sm:p-6',
+    lg: 'p-4 sm:p-6 lg:p-8',
   };
 
   return (
@@ -38,14 +38,14 @@ interface CardHeaderProps {
 
 export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
   return (
-    <div className="flex items-center justify-between mb-4">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+    <div className="flex items-start sm:items-center justify-between gap-2 mb-4">
+      <div className="min-w-0 flex-1">
+        <h3 className="text-base sm:text-lg font-semibold text-slate-900 truncate">{title}</h3>
         {subtitle && (
-          <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 truncate">{subtitle}</p>
         )}
       </div>
-      {action && <div>{action}</div>}
+      {action && <div className="flex-shrink-0">{action}</div>}
     </div>
   );
 }

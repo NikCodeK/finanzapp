@@ -15,10 +15,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
   if (!isOpen) return null;
 
   const sizeClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    sm: 'sm:max-w-sm',
+    md: 'sm:max-w-lg',
+    lg: 'sm:max-w-2xl',
+    xl: 'sm:max-w-4xl',
   };
 
   return (
@@ -30,15 +30,15 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
       />
 
       {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div className={`relative w-full ${sizeClasses[size]} transform rounded-xl bg-white shadow-2xl transition-all max-h-[90vh] flex flex-col`}>
+      <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className={`relative w-full ${sizeClasses[size]} transform rounded-t-xl sm:rounded-xl bg-white shadow-2xl transition-all max-h-[95vh] sm:max-h-[90vh] flex flex-col`}>
           {/* Header */}
           {title && (
-            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 flex-shrink-0">
-              <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 sm:px-6 py-4 flex-shrink-0">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900">{title}</h3>
               <button
                 onClick={onClose}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors -mr-1"
               >
                 <XMarkIcon className="h-5 w-5" />
               </button>
@@ -46,7 +46,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
           )}
 
           {/* Content */}
-          <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
+          <div className="px-4 sm:px-6 py-4 overflow-y-auto flex-1">{children}</div>
         </div>
       </div>
     </div>

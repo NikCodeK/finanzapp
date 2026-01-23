@@ -37,22 +37,22 @@ export default function KPICard({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-6">
       <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <p className={classNames('mt-1 text-2xl font-semibold', valueColors[variant])}>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-medium text-slate-500 truncate">{title}</p>
+          <p className={classNames('mt-1 text-xl sm:text-2xl font-semibold truncate', valueColors[variant])}>
             {value}
           </p>
           {subtitle && (
-            <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+            <p className="mt-1 text-xs sm:text-sm text-slate-500 truncate">{subtitle}</p>
           )}
           {trend && (
             <div className="mt-2 flex items-center gap-1">
               {trend.value >= 0 ? (
-                <ArrowUpIcon className="h-4 w-4 text-green-500" />
+                <ArrowUpIcon className="h-4 w-4 text-green-500 flex-shrink-0" />
               ) : (
-                <ArrowDownIcon className="h-4 w-4 text-red-500" />
+                <ArrowDownIcon className="h-4 w-4 text-red-500 flex-shrink-0" />
               )}
               <span
                 className={classNames(
@@ -62,14 +62,14 @@ export default function KPICard({
               >
                 {Math.abs(trend.value)}%
               </span>
-              <span className="text-sm text-slate-500">{trend.label}</span>
+              <span className="text-sm text-slate-500 truncate">{trend.label}</span>
             </div>
           )}
         </div>
         {icon && (
           <div
             className={classNames(
-              'flex h-12 w-12 items-center justify-center rounded-lg',
+              'flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-lg flex-shrink-0 ml-3',
               iconColors[variant]
             )}
           >

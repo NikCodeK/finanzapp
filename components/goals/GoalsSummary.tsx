@@ -11,25 +11,34 @@ interface GoalsSummaryProps {
 }
 
 export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: GoalsSummaryProps) {
-  const activeGoals = goals.filter((g) => g.status === 'aktiv');
-  const achievedGoals = goals.filter((g) => g.status === 'erreicht');
-  const pausedGoals = goals.filter((g) => g.status === 'pausiert');
+  const activeGoals: Goal[] = [];
+  let achievedGoalsCount = 0;
+  let pausedGoalsCount = 0;
+  let savingsGoalsCount = 0;
+  let totalTarget = 0;
+  let totalCurrent = 0;
+  let incomeGoal: Goal | undefined;
 
-  // For income goals, use monthlyIncome; for others, use goal.currentAmount
-  const getEffectiveCurrentAmount = (goal: Goal) => {
-    return goal.type === 'einkommen' && monthlyIncome !== undefined
-      ? monthlyIncome
-      : goal.currentAmount;
-  };
+  for (const goal of goals) {
+    if (goal.status === 'aktiv') {
+      activeGoals.push(goal);
+      if (goal.type === 'einkommen' && !incomeGoal) {
+        incomeGoal = goal;
+      }
+      if (goal.type !== 'einkommen' && goal.type !== 'investition') {
+        savingsGoalsCount += 1;
+        totalTarget += goal.targetAmount;
+        totalCurrent += goal.currentAmount;
+      }
+    } else if (goal.status === 'erreicht') {
+      achievedGoalsCount += 1;
+    } else if (goal.status === 'pausiert') {
+      pausedGoalsCount += 1;
+    }
+  }
 
-  // Exclude income and investment goals from savings calculations (different metrics)
-  const savingsGoals = activeGoals.filter((g) => g.type !== 'einkommen' && g.type !== 'investition');
-  const totalTarget = savingsGoals.reduce((sum, g) => sum + g.targetAmount, 0);
-  const totalCurrent = savingsGoals.reduce((sum, g) => sum + g.currentAmount, 0);
   const totalRemaining = totalTarget - totalCurrent;
 
-  // Find income goal
-  const incomeGoal = goals.find((g) => g.type === 'einkommen' && g.status === 'aktiv');
   const incomeProgress = incomeGoal && monthlyIncome !== undefined
     ? Math.min(100, Math.round((monthlyIncome / incomeGoal.targetAmount) * 100))
     : 0;
@@ -50,7 +59,7 @@ export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: 
       <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
         <div className="flex items-center gap-2 mb-2">
           <FlagIcon className="h-5 w-5 text-indigo-600" />
-          <p className="text-sm font-medium text-indigo-600">Aktive Ziele</p>
+        <p className="text-sm font-medium text-indigo-600">Aktive Ziele</p>
         </div>
         <p className="text-2xl font-bold text-indigo-700">{activeGoals.length}</p>
         <p className="text-xs text-indigo-500 mt-1">
@@ -63,7 +72,7 @@ export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: 
           <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
           <p className="text-sm font-medium text-emerald-600">Erreicht</p>
         </div>
-        <p className="text-2xl font-bold text-emerald-700">{achievedGoals.length}</p>
+        <p className="text-2xl font-bold text-emerald-700">{achievedGoalsCount}</p>
         <p className="text-xs text-emerald-500 mt-1">
           Ziele dieses Jahr erreicht
         </p>
@@ -76,7 +85,7 @@ export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: 
         </div>
         <p className="text-2xl font-bold text-blue-700">{formatCurrency(Math.max(0, totalRemaining))}</p>
         <p className="text-xs text-blue-500 mt-1">
-          {savingsGoals.length > 0 ? `von ${formatCurrency(totalTarget)} Zielsumme` : 'Keine Sparziele'}
+          {savingsGoalsCount > 0 ? `von ${formatCurrency(totalTarget)} Zielsumme` : 'Keine Sparziele'}
         </p>
       </div>
 
@@ -86,8 +95,8 @@ export default function GoalsSummary({ goals, getGoalProgress, monthlyIncome }: 
         </div>
         <p className="text-2xl font-bold text-slate-700">{formatCurrency(totalCurrent)}</p>
         <p className="text-xs text-slate-500 mt-1">
-          {savingsGoals.length} Sparziel{savingsGoals.length !== 1 ? 'e' : ''}
-          {pausedGoals.length > 0 && ` · ${pausedGoals.length} pausiert`}
+          {savingsGoalsCount} Sparziel{savingsGoalsCount !== 1 ? 'e' : ''}
+          {pausedGoalsCount > 0 && ` · ${pausedGoalsCount} pausiert`}
         </p>
       </div>
 

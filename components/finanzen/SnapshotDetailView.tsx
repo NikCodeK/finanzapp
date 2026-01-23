@@ -100,10 +100,10 @@ export default function SnapshotDetailView({
     });
   };
 
-  const totalCreditCardDebt = snapshot.creditCards.reduce(
-    (sum, card) => sum + (card.currentBalance || 0),
-    0
-  );
+  let totalCreditCardDebt = 0;
+  for (const card of snapshot.creditCards) {
+    totalCreditCardDebt += card.currentBalance || 0;
+  }
 
   const availableIncome = snapshot.monthlyIncome - snapshot.monthlyFixedCosts - snapshot.monthlyVariableCosts;
   const savingsRate = snapshot.monthlyIncome > 0
@@ -111,10 +111,21 @@ export default function SnapshotDetailView({
     : 0;
 
   // Transaction summary
-  const incomeTransactions = snapshot.transactions?.filter(t => t.type === 'income') || [];
-  const expenseTransactions = snapshot.transactions?.filter(t => t.type === 'expense') || [];
-  const totalTransactionIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const totalTransactionExpense = expenseTransactions.reduce((sum, t) => sum + t.amount, 0);
+  let totalTransactionIncome = 0;
+  let totalTransactionExpense = 0;
+  let incomeTransactionCount = 0;
+  let expenseTransactionCount = 0;
+
+  const snapshotTransactions = snapshot.transactions || [];
+  for (const transaction of snapshotTransactions) {
+    if (transaction.type === 'income') {
+      incomeTransactionCount += 1;
+      totalTransactionIncome += transaction.amount;
+    } else {
+      expenseTransactionCount += 1;
+      totalTransactionExpense += transaction.amount;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -339,12 +350,12 @@ export default function SnapshotDetailView({
                 <div>
                   <p className="text-xs text-emerald-600">Einnahmen</p>
                   <p className="font-semibold text-emerald-700">{formatCurrency(totalTransactionIncome)}</p>
-                  <p className="text-xs text-slate-400">{incomeTransactions.length} Transaktionen</p>
+                  <p className="text-xs text-slate-400">{incomeTransactionCount} Transaktionen</p>
                 </div>
                 <div>
                   <p className="text-xs text-red-600">Ausgaben</p>
                   <p className="font-semibold text-red-700">{formatCurrency(totalTransactionExpense)}</p>
-                  <p className="text-xs text-slate-400">{expenseTransactions.length} Transaktionen</p>
+                  <p className="text-xs text-slate-400">{expenseTransactionCount} Transaktionen</p>
                 </div>
               </div>
 

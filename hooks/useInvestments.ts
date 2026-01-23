@@ -131,33 +131,30 @@ export function useInvestments() {
     return success;
   }, []);
 
-  // Computed portfolio metrics
   const portfolioMetrics = useMemo(() => {
-    const activeInvestments = investments.filter(i => i.isActive);
-
-    const totalValue = activeInvestments.reduce((sum, inv) => {
-      return sum + inv.quantity * inv.currentPrice;
-    }, 0);
-
-    const totalCost = activeInvestments.reduce((sum, inv) => {
-      return sum + inv.quantity * inv.purchasePrice;
-    }, 0);
-
-    const totalGainLoss = totalValue - totalCost;
-    const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
-
-    // Group by type
+    let totalValue = 0;
+    let totalCost = 0;
+    let investmentCount = 0;
     const byType: Record<string, { value: number; count: number; gainLoss: number }> = {};
-    activeInvestments.forEach(inv => {
+
+    for (const inv of investments) {
+      if (!inv.isActive) continue;
+      investmentCount += 1;
+      const value = inv.quantity * inv.currentPrice;
+      const cost = inv.quantity * inv.purchasePrice;
+      totalValue += value;
+      totalCost += cost;
+
       if (!byType[inv.type]) {
         byType[inv.type] = { value: 0, count: 0, gainLoss: 0 };
       }
-      const value = inv.quantity * inv.currentPrice;
-      const cost = inv.quantity * inv.purchasePrice;
       byType[inv.type].value += value;
       byType[inv.type].count += 1;
       byType[inv.type].gainLoss += value - cost;
-    });
+    }
+
+    const totalGainLoss = totalValue - totalCost;
+    const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
     return {
       totalValue,
@@ -165,7 +162,7 @@ export function useInvestments() {
       totalGainLoss,
       totalGainLossPercent,
       byType,
-      investmentCount: activeInvestments.length,
+      investmentCount,
     };
   }, [investments]);
 
@@ -189,30 +186,35 @@ export function useInvestments() {
 
   // Monthly savings plan contributions
   const monthlySavingsPlanAmount = useMemo(() => {
-    return savingsPlans
-      .filter(p => p.isActive)
-      .reduce((sum, plan) => {
-        let monthly = plan.amount;
-        switch (plan.frequency) {
-          case 'vierteljaehrlich':
-            monthly = plan.amount / 3;
-            break;
-          case 'halbjaehrlich':
-            monthly = plan.amount / 6;
-            break;
-          case 'jaehrlich':
-            monthly = plan.amount / 12;
-            break;
-        }
-        return sum + monthly;
-      }, 0);
+    let total = 0;
+    for (const plan of savingsPlans) {
+      if (!plan.isActive) continue;
+      let monthly = plan.amount;
+      switch (plan.frequency) {
+        case 'vierteljaehrlich':
+          monthly = plan.amount / 3;
+          break;
+        case 'halbjaehrlich':
+          monthly = plan.amount / 6;
+          break;
+        case 'jaehrlich':
+          monthly = plan.amount / 12;
+          break;
+      }
+      total += monthly;
+    }
+    return total;
   }, [savingsPlans]);
 
   // Total dividends received
   const totalDividends = useMemo(() => {
-    return transactions
-      .filter(t => t.type === 'dividende')
-      .reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+    let total = 0;
+    for (const transaction of transactions) {
+      if (transaction.type === 'dividende') {
+        total += transaction.totalAmount || 0;
+      }
+    }
+    return total;
   }, [transactions]);
 
   return {

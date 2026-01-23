@@ -1,13 +1,15 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { AuthProvider, useAuth } from './AuthProvider';
 import { FinancialProfileProvider } from '@/contexts/FinancialProfileContext';
 import LoginScreen from './LoginScreen';
 import Sidebar from './Sidebar';
+import MobileNav from './MobileNav';
 
 function AppContent({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (!isAuthenticated) {
     return <LoginScreen />;
@@ -15,10 +17,22 @@ function AppContent({ children }: { children: ReactNode }) {
 
   return (
     <FinancialProfileProvider>
-      <div className="flex h-screen bg-slate-50">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="flex h-[100dvh] bg-slate-50">
+        {/* Desktop Sidebar - hidden on mobile */}
+        <div className="hidden lg:block">
+          <Sidebar />
+        </div>
+
+        {/* Mobile Navigation */}
+        <MobileNav
+          isOpen={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+          onOpen={() => setMobileMenuOpen(true)}
+        />
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 sm:py-6 lg:py-8">
             {children}
           </div>
         </main>

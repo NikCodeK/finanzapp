@@ -61,13 +61,15 @@ export default function TransactionsPage() {
     deleteTransaction,
   } = useTransactions({ mode: 'page', filters, pageSize: 50 });
 
-  const totalIncome = transactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalExpenses = transactions
-    .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  for (const transaction of transactions) {
+    if (transaction.type === 'income') {
+      totalIncome += transaction.amount;
+    } else {
+      totalExpenses += transaction.amount;
+    }
+  }
 
   const handleSave = (transactionData: Omit<Transaction, 'id'>) => {
     if (editingTransaction) {
@@ -107,47 +109,49 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Transaktionen</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Transaktionen</h1>
+          <p className="text-slate-500 mt-1 text-sm">
             {transactions.length} von {totalCount} Transaktionen
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <Button
             variant="secondary"
             onClick={() => setShowFilters(!showFilters)}
+            className="flex-1 sm:flex-none"
           >
-            <FunnelIcon className="h-4 w-4 mr-2" />
-            Filter
+            <FunnelIcon className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Filter</span>
           </Button>
-          <Button onClick={() => setIsModalOpen(true)}>
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Neue Transaktion
+          <Button onClick={() => setIsModalOpen(true)} className="flex-1 sm:flex-none">
+            <PlusIcon className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Neue Transaktion</span>
+            <span className="sm:hidden">Neu</span>
           </Button>
         </div>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-green-50 rounded-xl p-4">
-          <p className="text-sm text-green-600 font-medium">Einnahmen</p>
-          <p className="text-2xl font-bold text-green-700">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="bg-green-50 rounded-xl p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-green-600 font-medium">Einnahmen</p>
+          <p className="text-lg sm:text-2xl font-bold text-green-700 truncate">
             {formatCurrency(totalIncome)}
           </p>
         </div>
-        <div className="bg-red-50 rounded-xl p-4">
-          <p className="text-sm text-red-600 font-medium">Ausgaben</p>
-          <p className="text-2xl font-bold text-red-700">
+        <div className="bg-red-50 rounded-xl p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-red-600 font-medium">Ausgaben</p>
+          <p className="text-lg sm:text-2xl font-bold text-red-700 truncate">
             {formatCurrency(totalExpenses)}
           </p>
         </div>
-        <div className="bg-indigo-50 rounded-xl p-4">
-          <p className="text-sm text-indigo-600 font-medium">Netto</p>
-          <p className="text-2xl font-bold text-indigo-700">
+        <div className="bg-indigo-50 rounded-xl p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-indigo-600 font-medium">Netto</p>
+          <p className="text-lg sm:text-2xl font-bold text-indigo-700 truncate">
             {formatCurrency(totalIncome - totalExpenses)}
           </p>
         </div>
@@ -156,7 +160,7 @@ export default function TransactionsPage() {
       {/* Filters */}
       {showFilters && (
         <Card>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <Select
               label="Typ"
               value={filterType}

@@ -9,7 +9,6 @@ import Button from '@/components/ui/Button';
 import { WeeklyReport } from '@/lib/types';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { getWeekRange, toDateISO } from '@/lib/utils';
-import { computeWeeklySummary } from '@/lib/calculations';
 
 export default function WeeklyPage() {
   const { reports, isLoading, addReport, updateReport, deleteReport } =
@@ -39,12 +38,17 @@ export default function WeeklyPage() {
 
   // Calculate current week's data from transactions
   const currentWeekData = useMemo(() => {
-    return computeWeeklySummary(
-      transactions,
-      weekStartISO,
-      weekEndISO
-    );
-  }, [transactions, weekStartISO, weekEndISO]);
+    let income = 0;
+    let expenses = 0;
+    for (const transaction of transactions) {
+      if (transaction.type === 'income') {
+        income += transaction.amount;
+      } else {
+        expenses += transaction.amount;
+      }
+    }
+    return { income, expenses, net: income - expenses };
+  }, [transactions]);
 
   const handleSave = (reportData: Omit<WeeklyReport, 'id'>) => {
     if (editingReport) {

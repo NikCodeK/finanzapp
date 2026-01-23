@@ -73,9 +73,7 @@ export function useFinancialProfile() {
   const updateIncomeSource = useCallback(async (updated: IncomeSource) => {
     const success = await updateIncomeSourceDB(updated);
     if (success) {
-      setIncomeSources((prev) =>
-        prev.map((s) => (s.id === updated.id ? updated : s))
-      );
+      setIncomeSources((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
     }
     return success;
   }, []);
@@ -196,25 +194,27 @@ export function useFinancialProfile() {
 
   // Basis-Einkommen OHNE Quartalsbonus
   const monthlyIncomeWithoutBonus = useMemo(() => {
-    return incomeSources
-      .filter((s) => s.isActive && s.frequency !== 'quartalsbonus')
-      .reduce((sum, s) => {
-        const monthly = s.frequency === 'jaehrlich' ? s.amount / 12 : s.amount;
-        return sum + monthly;
-      }, 0);
+    let total = 0;
+    for (const source of incomeSources) {
+      if (!source.isActive || source.frequency === 'quartalsbonus') continue;
+      const monthly = source.frequency === 'jaehrlich' ? source.amount / 12 : source.amount;
+      total += monthly;
+    }
+    return total;
   }, [incomeSources]);
 
   // Nur der Quartalsbonus-Anteil (bestätigte Quartale)
   const monthlyBonusIncome = useMemo(() => {
-    return incomeSources
-      .filter((s) => s.isActive && s.frequency === 'quartalsbonus')
-      .reduce((sum, s) => {
-        const confirmedCount = s.confirmedQuarters
-          ? Object.values(s.confirmedQuarters).filter(Boolean).length
-          : 0;
-        const yearlyBonus = s.amount * confirmedCount;
-        return sum + (yearlyBonus / 12);
-      }, 0);
+    let total = 0;
+    for (const source of incomeSources) {
+      if (!source.isActive || source.frequency !== 'quartalsbonus') continue;
+      const confirmedCount = source.confirmedQuarters
+        ? Object.values(source.confirmedQuarters).filter(Boolean).length
+        : 0;
+      const yearlyBonus = source.amount * confirmedCount;
+      total += yearlyBonus / 12;
+    }
+    return total;
   }, [incomeSources]);
 
   // Gesamt-Einkommen MIT Bonus
@@ -224,13 +224,17 @@ export function useFinancialProfile() {
 
   // Quartalsbonus-Übersicht für Retrospektive
   const quarterlyBonusOverview = useMemo(() => {
-    const bonusSources = incomeSources.filter(
-      (s) => s.isActive && s.frequency === 'quartalsbonus'
-    );
+    const bonusSources: IncomeSource[] = [];
+    let totalBonusPerQuarter = 0;
+
+    for (const source of incomeSources) {
+      if (!source.isActive || source.frequency !== 'quartalsbonus') continue;
+      bonusSources.push(source);
+      totalBonusPerQuarter += source.amount;
+    }
 
     if (bonusSources.length === 0) return null;
 
-    const totalBonusPerQuarter = bonusSources.reduce((sum, s) => sum + s.amount, 0);
     const confirmedQuarters = {
       Q1: bonusSources.every((s) => s.confirmedQuarters?.Q1),
       Q2: bonusSources.every((s) => s.confirmedQuarters?.Q2),
@@ -252,26 +256,39 @@ export function useFinancialProfile() {
   }, [incomeSources]);
 
   const monthlyFixedCosts = useMemo(() => {
-    return fixedCosts
-      .filter((c) => c.isActive)
-      .reduce((sum, c) => {
-        let monthly = c.amount;
-        if (c.frequency === 'jaehrlich') monthly = c.amount / 12;
-        if (c.frequency === 'vierteljaehrlich') monthly = c.amount / 3;
-        return sum + monthly;
-      }, 0);
+    let total = 0;
+    for (const cost of fixedCosts) {
+      if (!cost.isActive) continue;
+      let monthly = cost.amount;
+      if (cost.frequency === 'jaehrlich') monthly = cost.amount / 12;
+      if (cost.frequency === 'vierteljaehrlich') monthly = cost.amount / 3;
+      total += monthly;
+    }
+    return total;
   }, [fixedCosts]);
 
   const monthlyVariableCosts = useMemo(() => {
-    return variableCosts.reduce((sum, c) => sum + c.estimatedMonthly, 0);
+    let total = 0;
+    for (const cost of variableCosts) {
+      total += cost.estimatedMonthly;
+    }
+    return total;
   }, [variableCosts]);
 
   const totalDebt = useMemo(() => {
-    return debts.reduce((sum, d) => sum + d.currentBalance, 0);
+    let total = 0;
+    for (const debt of debts) {
+      total += debt.currentBalance;
+    }
+    return total;
   }, [debts]);
 
   const monthlyDebtPayments = useMemo(() => {
-    return debts.reduce((sum, d) => sum + d.monthlyPayment, 0);
+    let total = 0;
+    for (const debt of debts) {
+      total += debt.monthlyPayment;
+    }
+    return total;
   }, [debts]);
 
   const totalAssets = useMemo(() => {

@@ -6,18 +6,19 @@ export function computeMonthlySummary(transactions: Transaction[], monthISO: str
   const startDate = startOfMonth(new Date(year, month - 1));
   const endDate = endOfMonth(new Date(year, month - 1));
 
-  const monthTransactions = transactions.filter(t => {
-    const date = parseISO(t.dateISO);
-    return isWithinInterval(date, { start: startDate, end: endDate });
-  });
-
-  const income = monthTransactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const expenses = monthTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+  let income = 0;
+  let expenses = 0;
+  for (const transaction of transactions) {
+    const date = parseISO(transaction.dateISO);
+    if (!isWithinInterval(date, { start: startDate, end: endDate })) {
+      continue;
+    }
+    if (transaction.type === 'income') {
+      income += transaction.amount;
+    } else {
+      expenses += transaction.amount;
+    }
+  }
 
   const net = income - expenses;
   const savingsRate = income > 0 ? net / income : 0;
@@ -33,18 +34,19 @@ export function computeWeeklySummary(
   const startDate = parseISO(startISO);
   const endDate = parseISO(endISO);
 
-  const weekTransactions = transactions.filter(t => {
-    const date = parseISO(t.dateISO);
-    return isWithinInterval(date, { start: startDate, end: endDate });
-  });
-
-  const income = weekTransactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const expenses = weekTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+  let income = 0;
+  let expenses = 0;
+  for (const transaction of transactions) {
+    const date = parseISO(transaction.dateISO);
+    if (!isWithinInterval(date, { start: startDate, end: endDate })) {
+      continue;
+    }
+    if (transaction.type === 'income') {
+      income += transaction.amount;
+    } else {
+      expenses += transaction.amount;
+    }
+  }
 
   return { income, expenses, net: income - expenses };
 }
@@ -53,12 +55,12 @@ export function groupByCategory(
   transactions: Transaction[],
   type?: 'income' | 'expense'
 ): CategoryGroup {
-  const filtered = type ? transactions.filter(t => t.type === type) : transactions;
-
-  return filtered.reduce((groups, t) => {
-    groups[t.category] = (groups[t.category] || 0) + t.amount;
-    return groups;
-  }, {} as CategoryGroup);
+  const groups: CategoryGroup = {};
+  for (const transaction of transactions) {
+    if (type && transaction.type !== type) continue;
+    groups[transaction.category] = (groups[transaction.category] || 0) + transaction.amount;
+  }
+  return groups;
 }
 
 export function getTransactionsForMonth(transactions: Transaction[], monthISO: string): Transaction[] {

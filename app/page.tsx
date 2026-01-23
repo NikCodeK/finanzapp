@@ -35,6 +35,7 @@ import { formatCurrency, getMonthRange, toDateISO, classNames } from '@/lib/util
 import { groupByCategory } from '@/lib/calculations';
 
 export default function Dashboard() {
+  const currentYear = new Date().getFullYear();
   const {
     incomeSources,
     monthlyIncome,
@@ -46,6 +47,7 @@ export default function Dashboard() {
     monthlyDebtPayments,
     totalDebt,
     totalAssets,
+    assets,
     netWorth,
     availableIncome,
     savingsRate,
@@ -53,7 +55,7 @@ export default function Dashboard() {
     isLoading,
   } = useSharedFinancialProfile();
 
-  const { goals } = useGoals(new Date().getFullYear());
+  const { goals } = useGoals(currentYear);
   const { getCurrentMonthBudgets } = useBudgets();
   const {
     creditCards,
@@ -101,6 +103,7 @@ export default function Dashboard() {
   };
 
   const [mounted, setMounted] = useState(false);
+  const [viewMode, setViewMode] = useState<'actual' | 'plan'>('actual');
 
   useEffect(() => {
     setMounted(true);
@@ -145,21 +148,58 @@ export default function Dashboard() {
     );
   }
 
+  let incomeTransactionCount = 0;
+  let expenseTransactionCount = 0;
+  let actualIncome = 0;
+  let actualExpenses = 0;
+
+  for (const transaction of monthTransactions) {
+    if (transaction.type === 'income') {
+      incomeTransactionCount += 1;
+      actualIncome += transaction.amount;
+    } else {
+      expenseTransactionCount += 1;
+      actualExpenses += transaction.amount;
+    }
+  }
+  const actualNet = actualIncome - actualExpenses;
+  const actualSavingsRate = actualIncome > 0 ? actualNet / actualIncome : 0;
+
   const totalExpenses = monthlyFixedCosts + monthlyVariableCosts + monthlyDebtPayments;
+  const expensesBase = viewMode === 'actual' ? actualExpenses : totalExpenses;
+  const emergencyMonths = expensesBase > 0 ? assets.savings / expensesBase : 0;
   const activeGoals = goals.filter(g => g.status === 'aktiv');
+  const displayIncome = viewMode === 'actual' ? actualIncome : monthlyIncome;
+  const displayExpenses = viewMode === 'actual' ? actualExpenses : totalExpenses;
+  const displayNet = viewMode === 'actual' ? actualNet : availableIncome;
+  const displaySavingsRate = viewMode === 'actual' ? actualSavingsRate : savingsRate;
+
+  const mobileQuickActions = [
+    { href: '/finanzen', label: 'Finanzen', icon: BanknotesIcon },
+    { href: '/subscriptions', label: 'Abos', icon: CreditCardIcon },
+    { href: `/ziele/${currentYear}`, label: 'Ziele', icon: FlagIcon },
+  ];
+  const desktopQuickActions = [
+    { href: '/finanzen', label: 'Finanzen', icon: BanknotesIcon },
+    { href: '/subscriptions', label: 'Abos', icon: CreditCardIcon },
+    { href: '/investments', label: 'Investments', icon: CurrencyEuroIcon },
+    { href: '/planning', label: 'Planung', icon: ShoppingCartIcon },
+    { href: '/analytics', label: 'Analyse', icon: ChartBarIcon },
+    { href: `/ziele/${currentYear}`, label: 'Ziele', icon: FlagIcon },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 mt-1">Deine finanzielle Übersicht</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1 text-sm sm:text-base">Deine finanzielle Übersicht</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <p className="text-sm text-slate-500">Health Score</p>
-            <p className={`text-2xl font-bold ${healthScore >= 70 ? 'text-green-600' : healthScore >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+            <p className={`text-xl sm:text-2xl font-bold ${healthScore >= 70 ? 'text-green-600' : healthScore >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
               {healthScore}/100
             </p>
           </div>
@@ -169,27 +209,63 @@ export default function Dashboard() {
       {/* Quick Transaction Add */}
       <QuickTransactionAdd onAdd={handleQuickAdd} />
 
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-700">Monatlicher Überblick</h2>
+        <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 text-xs">
+          <button
+            type="button"
+            onClick={() => setViewMode('actual')}
+            className={classNames(
+              'px-3 py-1 rounded-md font-medium transition-colors',
+              viewMode === 'actual' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+            )}
+          >
+            Ist
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('plan')}
+            className={classNames(
+              'px-3 py-1 rounded-md font-medium transition-colors',
+              viewMode === 'plan' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:text-slate-900'
+            )}
+          >
+            Plan
+          </button>
+        </div>
+      </div>
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard
           title="Monatl. Einkommen"
-          value={formatCurrency(monthlyIncome)}
-          subtitle={monthlyBonusIncome > 0 ? `inkl. ${formatCurrency(monthlyBonusIncome)} Bonus` : 'Gesamt'}
+          value={formatCurrency(displayIncome)}
+          subtitle={
+            viewMode === 'actual'
+              ? `${incomeTransactionCount} Einnahmen`
+              : monthlyBonusIncome > 0
+              ? `inkl. ${formatCurrency(monthlyBonusIncome)} Bonus`
+              : 'Gesamt'
+          }
           variant="income"
           icon={<ArrowTrendingUpIcon className="h-6 w-6" />}
         />
         <KPICard
           title="Monatl. Ausgaben"
-          value={formatCurrency(totalExpenses)}
-          subtitle={`Fix: ${formatCurrency(monthlyFixedCosts)}`}
+          value={formatCurrency(displayExpenses)}
+          subtitle={
+            viewMode === 'actual'
+              ? `${expenseTransactionCount} Ausgaben`
+              : `Fix: ${formatCurrency(monthlyFixedCosts)}`
+          }
           variant="expense"
           icon={<ArrowTrendingDownIcon className="h-6 w-6" />}
         />
         <KPICard
           title="Verfügbar"
-          value={formatCurrency(availableIncome)}
-          subtitle={`Sparquote: ${(savingsRate * 100).toFixed(0)}%`}
-          variant={availableIncome >= 0 ? 'income' : 'expense'}
+          value={formatCurrency(displayNet)}
+          subtitle={`Sparquote: ${(displaySavingsRate * 100).toFixed(0)}%`}
+          variant={displayNet >= 0 ? 'income' : 'expense'}
           icon={<WalletIcon className="h-6 w-6" />}
         />
         <KPICard
@@ -202,7 +278,7 @@ export default function Dashboard() {
       </div>
 
       {/* Gehalt Aufschlüsselung */}
-      <Card>
+      <Card className="hidden sm:block">
         <CardHeader
           title="Gehaltsübersicht"
           subtitle="Monatliches Einkommen aufgeschlüsselt"
@@ -267,25 +343,60 @@ export default function Dashboard() {
 
       {/* Ausgaben Übersicht */}
       <Card>
-        <CardHeader title="Monatliche Ausgaben" subtitle="Aufschlüsselung" />
-        <div className="space-y-3">
-          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-            <span className="text-slate-600">Fixkosten</span>
-            <span className="font-semibold text-slate-900">{formatCurrency(monthlyFixedCosts)}</span>
+        <CardHeader
+          title="Monatliche Ausgaben"
+          subtitle={viewMode === 'actual' ? 'Ist aus Transaktionen' : 'Plan-Aufschlüsselung'}
+        />
+        {viewMode === 'actual' ? (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Ist-Ausgaben (Transaktionen)</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(actualExpenses)}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Plan-Ausgaben</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(totalExpenses)}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Delta (Ist - Plan)</span>
+              <span className={actualExpenses - totalExpenses <= 0 ? 'font-semibold text-green-600' : 'font-semibold text-red-600'}>
+                {actualExpenses - totalExpenses <= 0 ? '-' : '+'}
+                {formatCurrency(Math.abs(actualExpenses - totalExpenses))}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Notgroschen</span>
+              <span className="font-semibold text-slate-900">
+                {emergencyMonths.toFixed(1)} Monate
+              </span>
+            </div>
           </div>
-          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-            <span className="text-slate-600">Variable Kosten</span>
-            <span className="font-semibold text-slate-900">{formatCurrency(monthlyVariableCosts)}</span>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Fixkosten</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(monthlyFixedCosts)}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Variable Kosten</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(monthlyVariableCosts)}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Schuldenraten</span>
+              <span className="font-semibold text-slate-900">{formatCurrency(monthlyDebtPayments)}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border-t-2 border-red-200">
+              <span className="font-medium text-red-700">Gesamt</span>
+              <span className="font-bold text-red-700">{formatCurrency(totalExpenses)}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+              <span className="text-slate-600">Notgroschen</span>
+              <span className="font-semibold text-slate-900">
+                {emergencyMonths.toFixed(1)} Monate
+              </span>
+            </div>
           </div>
-          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-            <span className="text-slate-600">Schuldenraten</span>
-            <span className="font-semibold text-slate-900">{formatCurrency(monthlyDebtPayments)}</span>
-          </div>
-          <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border-t-2 border-red-200">
-            <span className="font-medium text-red-700">Gesamt</span>
-            <span className="font-bold text-red-700">{formatCurrency(totalExpenses)}</span>
-          </div>
-        </div>
+        )}
       </Card>
 
       {/* Budget Status Widget */}
@@ -397,7 +508,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Investment-Widget */}
-        <Card>
+        <Card className="hidden sm:block">
           <CardHeader
             title="Investments"
             action={
@@ -433,7 +544,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Planung-Widget */}
-        <Card>
+        <Card className="hidden sm:block">
           <CardHeader
             title="Geplante Anschaffungen"
             action={
@@ -481,9 +592,9 @@ export default function Dashboard() {
         <Card>
           <CardHeader
             title="Aktive Ziele"
-            subtitle={`${activeGoals.length} Ziele für ${new Date().getFullYear()}`}
+            subtitle={`${activeGoals.length} Ziele für ${currentYear}`}
             action={
-              <Link href={`/ziele/${new Date().getFullYear()}`}>
+              <Link href={`/ziele/${currentYear}`}>
                 <Button variant="ghost" size="sm">Alle Ziele</Button>
               </Link>
             }
@@ -523,43 +634,25 @@ export default function Dashboard() {
       )}
 
       {/* Schnellaktionen */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Link href="/finanzen" className="block">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
-            <BanknotesIcon className="h-6 w-6 mx-auto text-indigo-500" />
-            <p className="text-sm font-medium text-slate-700 mt-2">Finanzen</p>
-          </div>
-        </Link>
-        <Link href="/subscriptions" className="block">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
-            <CreditCardIcon className="h-6 w-6 mx-auto text-indigo-500" />
-            <p className="text-sm font-medium text-slate-700 mt-2">Abos</p>
-          </div>
-        </Link>
-        <Link href="/investments" className="block">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
-            <CurrencyEuroIcon className="h-6 w-6 mx-auto text-indigo-500" />
-            <p className="text-sm font-medium text-slate-700 mt-2">Investments</p>
-          </div>
-        </Link>
-        <Link href="/planning" className="block">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
-            <ShoppingCartIcon className="h-6 w-6 mx-auto text-indigo-500" />
-            <p className="text-sm font-medium text-slate-700 mt-2">Planung</p>
-          </div>
-        </Link>
-        <Link href="/analytics" className="block">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
-            <ChartBarIcon className="h-6 w-6 mx-auto text-indigo-500" />
-            <p className="text-sm font-medium text-slate-700 mt-2">Analyse</p>
-          </div>
-        </Link>
-        <Link href={`/ziele/${new Date().getFullYear()}`} className="block">
-          <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
-            <FlagIcon className="h-6 w-6 mx-auto text-indigo-500" />
-            <p className="text-sm font-medium text-slate-700 mt-2">Ziele</p>
-          </div>
-        </Link>
+      <div className="grid grid-cols-3 gap-2 sm:hidden">
+        {mobileQuickActions.map((item) => (
+          <Link key={item.href} href={item.href} className="block">
+            <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+              <item.icon className="h-6 w-6 mx-auto text-indigo-500" />
+              <p className="text-sm font-medium text-slate-700 mt-2">{item.label}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+      <div className="hidden sm:grid sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-4">
+        {desktopQuickActions.map((item) => (
+          <Link key={item.href} href={item.href} className="block">
+            <div className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors text-center">
+              <item.icon className="h-6 w-6 mx-auto text-indigo-500" />
+              <p className="text-sm font-medium text-slate-700 mt-2">{item.label}</p>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );

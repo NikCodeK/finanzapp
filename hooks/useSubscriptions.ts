@@ -51,31 +51,48 @@ export function useSubscriptions() {
     return success;
   }, []);
 
-  // Calculate monthly cost of all subscriptions
-  const monthlySubscriptionCost = useMemo(() => {
-    return subscriptions
-      .filter(s => s.isActive)
-      .reduce((total, sub) => {
-        let monthlyCost = sub.amount;
-        switch (sub.frequency) {
-          case 'vierteljaehrlich':
-            monthlyCost = sub.amount / 3;
-            break;
-          case 'halbjaehrlich':
-            monthlyCost = sub.amount / 6;
-            break;
-          case 'jaehrlich':
-            monthlyCost = sub.amount / 12;
-            break;
-        }
-        return total + monthlyCost;
-      }, 0);
+  const subscriptionSummary = useMemo(() => {
+    const grouped: Record<string, { subscriptions: Subscription[]; totalMonthly: number }> = {};
+    let monthlySubscriptionCost = 0;
+    let activeCount = 0;
+
+    for (const sub of subscriptions) {
+      if (!sub.isActive) continue;
+      activeCount += 1;
+
+      let monthlyCost = sub.amount;
+      switch (sub.frequency) {
+        case 'vierteljaehrlich':
+          monthlyCost = sub.amount / 3;
+          break;
+        case 'halbjaehrlich':
+          monthlyCost = sub.amount / 6;
+          break;
+        case 'jaehrlich':
+          monthlyCost = sub.amount / 12;
+          break;
+      }
+
+      monthlySubscriptionCost += monthlyCost;
+
+      if (!grouped[sub.category]) {
+        grouped[sub.category] = { subscriptions: [], totalMonthly: 0 };
+      }
+      grouped[sub.category].subscriptions.push(sub);
+      grouped[sub.category].totalMonthly += monthlyCost;
+    }
+
+    return {
+      monthlySubscriptionCost,
+      activeCount,
+      subscriptionsByCategory: grouped,
+    };
   }, [subscriptions]);
 
   // Calculate yearly cost
   const yearlySubscriptionCost = useMemo(() => {
-    return monthlySubscriptionCost * 12;
-  }, [monthlySubscriptionCost]);
+    return subscriptionSummary.monthlySubscriptionCost * 12;
+  }, [subscriptionSummary.monthlySubscriptionCost]);
 
   // Get subscriptions that can be cancelled soon
   const upcomingCancellations = useMemo(() => {
@@ -105,35 +122,6 @@ export function useSubscriptions() {
       .sort((a, b) => a.daysUntilDeadline - b.daysUntilDeadline);
   }, [subscriptions]);
 
-  // Group subscriptions by category
-  const subscriptionsByCategory = useMemo(() => {
-    const grouped: Record<string, { subscriptions: Subscription[]; totalMonthly: number }> = {};
-
-    subscriptions.filter(s => s.isActive).forEach(sub => {
-      if (!grouped[sub.category]) {
-        grouped[sub.category] = { subscriptions: [], totalMonthly: 0 };
-      }
-
-      let monthlyCost = sub.amount;
-      switch (sub.frequency) {
-        case 'vierteljaehrlich':
-          monthlyCost = sub.amount / 3;
-          break;
-        case 'halbjaehrlich':
-          monthlyCost = sub.amount / 6;
-          break;
-        case 'jaehrlich':
-          monthlyCost = sub.amount / 12;
-          break;
-      }
-
-      grouped[sub.category].subscriptions.push(sub);
-      grouped[sub.category].totalMonthly += monthlyCost;
-    });
-
-    return grouped;
-  }, [subscriptions]);
-
   return {
     subscriptions,
     isLoading,
@@ -141,10 +129,10 @@ export function useSubscriptions() {
     updateSubscription,
     deleteSubscription,
     refresh: loadSubscriptions,
-    monthlySubscriptionCost,
+    monthlySubscriptionCost: subscriptionSummary.monthlySubscriptionCost,
     yearlySubscriptionCost,
     upcomingCancellations,
-    subscriptionsByCategory,
-    activeCount: subscriptions.filter(s => s.isActive).length,
+    subscriptionsByCategory: subscriptionSummary.subscriptionsByCategory,
+    activeCount: subscriptionSummary.activeCount,
   };
 }

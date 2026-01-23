@@ -51,11 +51,19 @@ export function useDebts() {
   }, []);
 
   const getTotalDebt = useCallback(() => {
-    return debts.reduce((sum, d) => sum + d.currentBalance, 0);
+    let total = 0;
+    for (const debt of debts) {
+      total += debt.currentBalance;
+    }
+    return total;
   }, [debts]);
 
   const getTotalMonthlyPayments = useCallback(() => {
-    return debts.reduce((sum, d) => sum + d.monthlyPayment, 0);
+    let total = 0;
+    for (const debt of debts) {
+      total += debt.monthlyPayment;
+    }
+    return total;
   }, [debts]);
 
   return {

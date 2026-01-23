@@ -41,6 +41,7 @@ export default function AnalyticsPage() {
     lifestyleInflationAlerts,
     missedSavingsOpportunities,
     totalMissedSavings,
+    budgetSummary,
     topSpendingCategories,
     averageMonthlyExpenses,
     monthlyTotals,
@@ -55,8 +56,15 @@ export default function AnalyticsPage() {
 
   // Calculate total expenses and income from transactions
   const totalStats = useMemo(() => {
-    const income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-    const expenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    let income = 0;
+    let expenses = 0;
+    for (const transaction of transactions) {
+      if (transaction.type === 'income') {
+        income += transaction.amount;
+      } else {
+        expenses += transaction.amount;
+      }
+    }
     return { income, expenses, net: income - expenses };
   }, [transactions]);
 
@@ -84,14 +92,14 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
         <Card>
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <ArrowTrendingUpIcon className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Einnahmen (6M)</p>
+              <p className="text-sm text-slate-500">Einnahmen (6M, Ist)</p>
               <p className="text-xl font-bold text-green-600">
                 {formatCurrency(totalStats.income)}
               </p>
@@ -105,7 +113,7 @@ export default function AnalyticsPage() {
               <ArrowTrendingDownIcon className="h-5 w-5 text-red-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Ausgaben (6M)</p>
+              <p className="text-sm text-slate-500">Ausgaben (6M, Ist)</p>
               <p className="text-xl font-bold text-red-600">
                 {formatCurrency(totalStats.expenses)}
               </p>
@@ -136,6 +144,25 @@ export default function AnalyticsPage() {
               <p className="text-sm text-slate-500">Budget-Überschreitung</p>
               <p className="text-xl font-bold text-orange-600">
                 {formatCurrency(totalMissedSavings)}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${budgetSummary.variance <= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+              {budgetSummary.variance <= 0 ? (
+                <ArrowTrendingDownIcon className="h-5 w-5 text-green-600" />
+              ) : (
+                <ArrowTrendingUpIcon className="h-5 w-5 text-red-600" />
+              )}
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Budget-Delta (Monat)</p>
+              <p className={`text-xl font-bold ${budgetSummary.variance <= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {budgetSummary.variance <= 0 ? '-' : '+'}
+                {formatCurrency(Math.abs(budgetSummary.variance))}
               </p>
             </div>
           </div>

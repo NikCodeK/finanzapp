@@ -2,6 +2,7 @@
 
 import { SpendingPattern } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
+import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface SpendingPatternsProps {
@@ -10,11 +11,14 @@ interface SpendingPatternsProps {
 }
 
 export default function SpendingPatterns({ patterns, peakDay }: SpendingPatternsProps) {
-  const chartData = patterns.map(p => ({
-    day: p.dayName.substring(0, 2),
-    amount: p.totalAmount,
-    count: p.transactionCount,
-  }));
+  const chartData = useMemo(() => {
+    return patterns.map((pattern) => ({
+      day: pattern.dayName.substring(0, 2),
+      amount: pattern.totalAmount,
+      count: pattern.transactionCount,
+      fullDay: pattern.dayName,
+    }));
+  }, [patterns]);
 
   return (
     <div className="space-y-4">
@@ -28,8 +32,8 @@ export default function SpendingPatterns({ patterns, peakDay }: SpendingPatterns
             <Tooltip
               formatter={(value: number) => formatCurrency(value)}
               labelFormatter={(label) => {
-                const pattern = patterns.find(p => p.dayName.startsWith(label));
-                return pattern?.dayName || label;
+                const match = chartData.find((item) => item.day === label);
+                return match?.fullDay || label;
               }}
               contentStyle={{
                 backgroundColor: '#1e293b',

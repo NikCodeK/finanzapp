@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { CategoryTrend } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, MinusIcon } from '@heroicons/react/24/outline';
@@ -12,19 +13,24 @@ interface TrendAnalysisProps {
 
 export default function TrendAnalysis({ categoryTrends, growingCategories }: TrendAnalysisProps) {
   // Prepare data for the chart - top 5 categories
-  const topCategories = categoryTrends.slice(0, 5);
+  const { topCategories, chartData } = useMemo(() => {
+    const top = categoryTrends.slice(0, 5);
+    const data = top[0]?.months.map((_, index) => {
+      const dataPoint: Record<string, string | number> = {
+        month: top[0].months[index].monthISO.substring(5),
+      };
+      top.forEach(cat => {
+        dataPoint[cat.category] = cat.months[index].amount;
+      });
+      return dataPoint;
+    }) || [];
+    return { topCategories: top, chartData: data };
+  }, [categoryTrends]);
 
-  const chartData = topCategories[0]?.months.map((_, index) => {
-    const dataPoint: Record<string, string | number> = {
-      month: topCategories[0].months[index].monthISO.substring(5), // MM format
-    };
-    topCategories.forEach(cat => {
-      dataPoint[cat.category] = cat.months[index].amount;
-    });
-    return dataPoint;
-  }) || [];
-
-  const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
+  const colors = useMemo(
+    () => ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'],
+    []
+  );
 
   return (
     <div className="space-y-6">

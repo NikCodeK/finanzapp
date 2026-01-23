@@ -480,8 +480,14 @@ export default function ProjectionPage() {
         {scenarios.map(({ key, label, color }) => {
           const data = allScenarios[key];
           const finalMonth = data[data.length - 1];
-          const totalIncome = data.reduce((sum, m) => sum + m.income, 0);
-          const totalExpensesScenario = data.reduce((sum, m) => sum + m.expenses, 0);
+          let totalIncome = 0;
+          for (const month of data) {
+            totalIncome += month.income;
+          }
+          let totalExpensesScenario = 0;
+          for (const month of data) {
+            totalExpensesScenario += month.expenses;
+          }
 
           return (
             <Card

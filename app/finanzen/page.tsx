@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   PlusIcon,
   PencilIcon,
@@ -29,9 +29,19 @@ import HistoryTab from '@/components/finanzen/HistoryTab';
 import { useCreditCards } from '@/hooks/useCreditCards';
 import { useTransactions } from '@/hooks/useTransactions';
 import { IncomeSource, FixedCost, VariableCostEstimate, Debt, Assets, QuarterlyBonusStatus, CreditCard, CreditCardBalance } from '@/lib/types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, toDateISO } from '@/lib/utils';
 
 type TabType = 'uebersicht' | 'einnahmen' | 'fixkosten' | 'variable' | 'schulden' | 'kreditkarten' | 'vermoegen' | 'historie';
+
+const mobileTabIds: TabType[] = [
+  'uebersicht',
+  'einnahmen',
+  'fixkosten',
+  'variable',
+  'schulden',
+  'kreditkarten',
+  'vermoegen',
+];
 
 export default function FinanzenPage() {
   const [activeTab, setActiveTab] = useState<TabType>('uebersicht');
@@ -90,10 +100,16 @@ export default function FinanzenPage() {
     isLoading: creditCardsLoading,
   } = useCreditCards();
 
+  const snapshotStartISO = '1970-01-01';
+  const snapshotEndISO = toDateISO(new Date());
   const {
     transactions,
     isLoading: transactionsLoading,
-  } = useTransactions({ pageSize: 100 });
+  } = useTransactions({
+    mode: 'range',
+    startDateISO: snapshotStartISO,
+    endDateISO: snapshotEndISO,
+  });
 
   const tabs = [
     { id: 'uebersicht' as TabType, label: 'Übersicht', icon: ChartPieIcon },
@@ -105,6 +121,24 @@ export default function FinanzenPage() {
     { id: 'vermoegen' as TabType, label: 'Vermögen', icon: WalletIcon },
     { id: 'historie' as TabType, label: 'Historie', icon: ClockIcon },
   ];
+  const mobileTabs = tabs.filter((tab) => mobileTabIds.includes(tab.id));
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 639px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches);
+    };
+    setIsMobile(media.matches);
+    media.addEventListener('change', handleChange);
+    return () => media.removeEventListener('change', handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (isMobile && !mobileTabIds.includes(activeTab)) {
+      setActiveTab('uebersicht');
+    }
+  }, [activeTab, isMobile, mobileTabIds]);
 
   const handleAddClick = () => {
     setEditingItem(null);
@@ -260,12 +294,12 @@ export default function FinanzenPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Meine Finanzen</h1>
-          <p className="text-slate-500 mt-1">Verwalte deine Einnahmen, Ausgaben und Vermögenswerte</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Meine Finanzen</h1>
+          <p className="text-slate-500 mt-1 text-sm sm:text-base">Verwalte deine Einnahmen, Ausgaben und Vermögenswerte</p>
         </div>
         <div className="flex items-center gap-4">
           <FinancialHealthScore score={healthScore} />
@@ -273,27 +307,33 @@ export default function FinanzenPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200">
-        <nav className="flex gap-4 overflow-x-auto">
-          {tabs.map((tab) => {
+      <div className="border-b border-slate-200 -mx-4 sm:mx-0 px-4 sm:px-0">
+        <nav className="flex gap-1 sm:gap-4 overflow-x-auto pb-px -mb-px scrollbar-none">
+          {(isMobile ? mobileTabs : tabs).map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-indigo-600 text-indigo-600'
                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                 }`}
               >
-                <Icon className="h-5 w-5" />
-                {tab.label}
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.slice(0, 6)}{tab.label.length > 6 ? '.' : ''}</span>
               </button>
             );
           })}
         </nav>
       </div>
+      {isMobile && (
+        <p className="text-xs text-slate-500 sm:hidden">
+          Detaillierte Historie und Reports sind auf dem Desktop verfügbar.
+        </p>
+      )}
 
       {/* Tab Content */}
       <div className="min-h-[400px]">
@@ -664,22 +704,22 @@ export default function FinanzenPage() {
 
             {/* Summary */}
             {creditCards.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                  <p className="text-sm text-red-600">Gesamtstand</p>
-                  <p className="text-xl font-bold text-red-700">{formatCurrency(totalCreditCardDebt)}</p>
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
+                <div className="p-2 sm:p-3 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-xs sm:text-sm text-red-600">Gesamtstand</p>
+                  <p className="text-lg sm:text-xl font-bold text-red-700 truncate">{formatCurrency(totalCreditCardDebt)}</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-sm text-slate-600">Gesamtlimit</p>
-                  <p className="text-xl font-bold text-slate-700">{formatCurrency(totalCreditLimit)}</p>
+                <div className="p-2 sm:p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-xs sm:text-sm text-slate-600">Gesamtlimit</p>
+                  <p className="text-lg sm:text-xl font-bold text-slate-700 truncate">{formatCurrency(totalCreditLimit)}</p>
                 </div>
-                <div className={`p-3 rounded-lg border ${averageUtilization >= 80 ? 'bg-red-50 border-red-200' : averageUtilization >= 50 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
-                  <p className={`text-sm ${averageUtilization >= 80 ? 'text-red-600' : averageUtilization >= 50 ? 'text-orange-600' : 'text-green-600'}`}>Auslastung</p>
-                  <p className={`text-xl font-bold ${averageUtilization >= 80 ? 'text-red-700' : averageUtilization >= 50 ? 'text-orange-700' : 'text-green-700'}`}>{averageUtilization.toFixed(1)}%</p>
+                <div className={`p-2 sm:p-3 rounded-lg border ${averageUtilization >= 80 ? 'bg-red-50 border-red-200' : averageUtilization >= 50 ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
+                  <p className={`text-xs sm:text-sm ${averageUtilization >= 80 ? 'text-red-600' : averageUtilization >= 50 ? 'text-orange-600' : 'text-green-600'}`}>Auslastung</p>
+                  <p className={`text-lg sm:text-xl font-bold ${averageUtilization >= 80 ? 'text-red-700' : averageUtilization >= 50 ? 'text-orange-700' : 'text-green-700'}`}>{averageUtilization.toFixed(1)}%</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-sm text-slate-600">Monatl. Gebühren</p>
-                  <p className="text-xl font-bold text-slate-700">{formatCurrency(creditCardMonthlyFees)}</p>
+                <div className="p-2 sm:p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-xs sm:text-sm text-slate-600">Monatl. Gebühren</p>
+                  <p className="text-lg sm:text-xl font-bold text-slate-700 truncate">{formatCurrency(creditCardMonthlyFees)}</p>
                 </div>
               </div>
             )}

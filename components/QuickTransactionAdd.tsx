@@ -98,19 +98,18 @@ export default function QuickTransactionAdd({ onAdd }: QuickTransactionAddProps)
   ];
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+    <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm">
       <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Main row */}
-        <div className="flex flex-wrap gap-2 items-end">
-          {/* Type Toggle */}
-          <div className="flex rounded-lg bg-slate-100 p-0.5">
+        {/* Type Toggle - full width on mobile */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex rounded-lg bg-slate-100 p-0.5 flex-1 sm:flex-none">
             <button
               type="button"
               onClick={() => {
                 setType('expense');
                 setCategory('');
               }}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                 type === 'expense'
                   ? 'bg-white text-red-600 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -124,7 +123,7 @@ export default function QuickTransactionAdd({ onAdd }: QuickTransactionAddProps)
                 setType('income');
                 setCategory('');
               }}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                 type === 'income'
                   ? 'bg-white text-green-600 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -134,8 +133,25 @@ export default function QuickTransactionAdd({ onAdd }: QuickTransactionAddProps)
             </button>
           </div>
 
+          {/* Toggle More Options */}
+          <button
+            type="button"
+            onClick={() => setShowMore(!showMore)}
+            className="p-2 text-slate-400 hover:text-slate-600 transition-colors sm:hidden"
+            title={showMore ? 'Weniger Optionen' : 'Mehr Optionen'}
+          >
+            {showMore ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+
+        {/* Main inputs row */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
           {/* Amount */}
-          <div className="w-28">
+          <div className="col-span-1 sm:w-28">
             <Input
               type="number"
               step="0.01"
@@ -150,7 +166,7 @@ export default function QuickTransactionAdd({ onAdd }: QuickTransactionAddProps)
           </div>
 
           {/* Category */}
-          <div className="flex-1 min-w-[140px]">
+          <div className="col-span-1 sm:flex-1 sm:min-w-[140px]">
             <Select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -159,9 +175,9 @@ export default function QuickTransactionAdd({ onAdd }: QuickTransactionAddProps)
             />
           </div>
 
-          {/* Template Dropdown */}
+          {/* Template Dropdown - hidden on mobile by default */}
           {templates.length > 0 && (
-            <div className="min-w-[120px]">
+            <div className="hidden sm:block sm:min-w-[120px]">
               <Select
                 value={selectedTemplate}
                 onChange={(e) => handleTemplateSelect(e.target.value)}
@@ -177,16 +193,16 @@ export default function QuickTransactionAdd({ onAdd }: QuickTransactionAddProps)
           )}
 
           {/* Submit Button */}
-          <Button type="submit" disabled={!amount || !category || isSubmitting}>
+          <Button type="submit" disabled={!amount || !category || isSubmitting} className="col-span-2 sm:col-span-1">
             <PlusIcon className="h-4 w-4 mr-1" />
             {isSubmitting ? 'Speichern...' : 'Hinzufügen'}
           </Button>
 
-          {/* Toggle More Options */}
+          {/* Toggle More Options - desktop only */}
           <button
             type="button"
             onClick={() => setShowMore(!showMore)}
-            className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+            className="hidden sm:block p-2 text-slate-400 hover:text-slate-600 transition-colors"
             title={showMore ? 'Weniger Optionen' : 'Mehr Optionen'}
           >
             {showMore ? (

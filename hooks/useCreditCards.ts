@@ -77,43 +77,39 @@ export function useCreditCards() {
     return await deleteCreditCardBalanceDB(id);
   }, []);
 
-  // Calculated values
-  const totalCreditCardDebt = useMemo(() => {
-    return creditCards
-      .filter((c) => c.isActive)
-      .reduce((sum, c) => sum + c.currentBalance, 0);
-  }, [creditCards]);
+  const creditCardSummary = useMemo(() => {
+    const activeCards: CreditCard[] = [];
+    let totalCreditCardDebt = 0;
+    let totalCreditLimit = 0;
+    let totalMonthlyFees = 0;
+    let totalAnnualFees = 0;
 
-  const totalCreditLimit = useMemo(() => {
-    return creditCards
-      .filter((c) => c.isActive)
-      .reduce((sum, c) => sum + c.creditLimit, 0);
-  }, [creditCards]);
+    for (const card of creditCards) {
+      if (!card.isActive) continue;
+      activeCards.push(card);
+      totalCreditCardDebt += card.currentBalance;
+      totalCreditLimit += card.creditLimit;
+      totalMonthlyFees += card.monthlyFee;
+      totalAnnualFees += card.annualFee;
+    }
 
-  const averageUtilization = useMemo(() => {
-    if (totalCreditLimit === 0) return 0;
-    return (totalCreditCardDebt / totalCreditLimit) * 100;
-  }, [totalCreditCardDebt, totalCreditLimit]);
+    const averageUtilization = totalCreditLimit === 0
+      ? 0
+      : (totalCreditCardDebt / totalCreditLimit) * 100;
 
-  const totalMonthlyFees = useMemo(() => {
-    return creditCards
-      .filter((c) => c.isActive)
-      .reduce((sum, c) => sum + c.monthlyFee, 0);
-  }, [creditCards]);
-
-  const totalAnnualFees = useMemo(() => {
-    return creditCards
-      .filter((c) => c.isActive)
-      .reduce((sum, c) => sum + c.annualFee, 0);
-  }, [creditCards]);
-
-  const activeCards = useMemo(() => {
-    return creditCards.filter((c) => c.isActive);
+    return {
+      activeCards,
+      totalCreditCardDebt,
+      totalCreditLimit,
+      averageUtilization,
+      totalMonthlyFees,
+      totalAnnualFees,
+    };
   }, [creditCards]);
 
   return {
     creditCards,
-    activeCards,
+    activeCards: creditCardSummary.activeCards,
     isLoading,
     addCreditCard,
     updateCreditCard,
@@ -121,11 +117,11 @@ export function useCreditCards() {
     loadBalances,
     addBalance,
     deleteBalance,
-    totalCreditCardDebt,
-    totalCreditLimit,
-    averageUtilization,
-    totalMonthlyFees,
-    totalAnnualFees,
+    totalCreditCardDebt: creditCardSummary.totalCreditCardDebt,
+    totalCreditLimit: creditCardSummary.totalCreditLimit,
+    averageUtilization: creditCardSummary.averageUtilization,
+    totalMonthlyFees: creditCardSummary.totalMonthlyFees,
+    totalAnnualFees: creditCardSummary.totalAnnualFees,
     refresh: loadCreditCards,
   };
 }

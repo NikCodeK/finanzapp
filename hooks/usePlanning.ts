@@ -122,32 +122,33 @@ export function usePlanning() {
     return success;
   }, []);
 
-  // Computed values for planned purchases
-  const totalPlannedAmount = useMemo(() => {
-    return plannedPurchases
-      .filter(p => p.status === 'aktiv')
-      .reduce((sum, p) => sum + p.targetAmount, 0);
-  }, [plannedPurchases]);
+  const purchaseSummary = useMemo(() => {
+    const activePurchases: PlannedPurchase[] = [];
+    let totalPlannedAmount = 0;
+    let totalSavedAmount = 0;
+    let monthlyContributionsNeeded = 0;
 
-  const totalSavedAmount = useMemo(() => {
-    return plannedPurchases
-      .filter(p => p.status === 'aktiv')
-      .reduce((sum, p) => sum + p.currentAmount, 0);
-  }, [plannedPurchases]);
+    for (const purchase of plannedPurchases) {
+      if (purchase.status !== 'aktiv') continue;
+      activePurchases.push(purchase);
+      totalPlannedAmount += purchase.targetAmount;
+      totalSavedAmount += purchase.currentAmount;
+      monthlyContributionsNeeded += purchase.monthlyContribution;
+    }
 
-  const monthlyContributionsNeeded = useMemo(() => {
-    return plannedPurchases
-      .filter(p => p.status === 'aktiv')
-      .reduce((sum, p) => sum + p.monthlyContribution, 0);
+    return {
+      activePurchases,
+      totalPlannedAmount,
+      totalSavedAmount,
+      monthlyContributionsNeeded,
+    };
   }, [plannedPurchases]);
 
   // Calculate months until goal for each purchase
   const purchasesWithProjection = useMemo(() => {
     const today = new Date();
 
-    return plannedPurchases
-      .filter(p => p.status === 'aktiv')
-      .map(purchase => {
+    return purchaseSummary.activePurchases.map(purchase => {
         const remaining = purchase.targetAmount - purchase.currentAmount;
         const monthsToGoal = purchase.monthlyContribution > 0
           ? Math.ceil(remaining / purchase.monthlyContribution)
@@ -171,20 +172,26 @@ export function usePlanning() {
             : 0,
         };
       });
-  }, [plannedPurchases]);
+  }, [purchaseSummary.activePurchases]);
 
-  // Computed values for event budgets
-  const activeEventBudgets = useMemo(() => {
-    return eventBudgets.filter(e => e.status === 'aktiv');
+  const eventBudgetSummary = useMemo(() => {
+    const activeEventBudgets: EventBudget[] = [];
+    let totalEventBudgetTarget = 0;
+    let totalEventBudgetSaved = 0;
+
+    for (const event of eventBudgets) {
+      if (event.status !== 'aktiv') continue;
+      activeEventBudgets.push(event);
+      totalEventBudgetTarget += event.targetAmount;
+      totalEventBudgetSaved += event.currentAmount;
+    }
+
+    return {
+      activeEventBudgets,
+      totalEventBudgetTarget,
+      totalEventBudgetSaved,
+    };
   }, [eventBudgets]);
-
-  const totalEventBudgetTarget = useMemo(() => {
-    return activeEventBudgets.reduce((sum, e) => sum + e.targetAmount, 0);
-  }, [activeEventBudgets]);
-
-  const totalEventBudgetSaved = useMemo(() => {
-    return activeEventBudgets.reduce((sum, e) => sum + e.currentAmount, 0);
-  }, [activeEventBudgets]);
 
   return {
     // Planned Purchases
@@ -193,9 +200,9 @@ export function usePlanning() {
     addPlannedPurchase,
     updatePlannedPurchase,
     deletePlannedPurchase,
-    totalPlannedAmount,
-    totalSavedAmount,
-    monthlyContributionsNeeded,
+    totalPlannedAmount: purchaseSummary.totalPlannedAmount,
+    totalSavedAmount: purchaseSummary.totalSavedAmount,
+    monthlyContributionsNeeded: purchaseSummary.monthlyContributionsNeeded,
 
     // Life Scenarios
     lifeScenarios,
@@ -205,12 +212,12 @@ export function usePlanning() {
 
     // Event Budgets
     eventBudgets,
-    activeEventBudgets,
+    activeEventBudgets: eventBudgetSummary.activeEventBudgets,
     addEventBudget,
     updateEventBudget,
     deleteEventBudget,
-    totalEventBudgetTarget,
-    totalEventBudgetSaved,
+    totalEventBudgetTarget: eventBudgetSummary.totalEventBudgetTarget,
+    totalEventBudgetSaved: eventBudgetSummary.totalEventBudgetSaved,
 
     // General
     isLoading,

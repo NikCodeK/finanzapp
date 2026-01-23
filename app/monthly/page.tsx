@@ -64,12 +64,15 @@ export default function MonthlyPage() {
   const monthTransactions = useMemo(() => transactions, [transactions]);
 
   const monthlySummary = useMemo(() => {
-    const income = monthTransactions
-      .filter((t) => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
-    const expenses = monthTransactions
-      .filter((t) => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
+    let income = 0;
+    let expenses = 0;
+    for (const transaction of monthTransactions) {
+      if (transaction.type === 'income') {
+        income += transaction.amount;
+      } else {
+        expenses += transaction.amount;
+      }
+    }
     const net = income - expenses;
     return {
       income,
