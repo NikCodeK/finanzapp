@@ -16,5 +16,14 @@ export function ServiceWorkerRegistration() {
     }
   }, []);
 
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      (window.navigator as { standalone?: boolean }).standalone === true;
+    if (isStandalone) {
+      document.documentElement.dataset.standalone = 'true';
+    }
+  }, []);
+
   return null;
 }
