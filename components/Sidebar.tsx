@@ -19,6 +19,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   BeakerIcon,
+  ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
@@ -47,6 +48,7 @@ const navigationGroups: NavGroup[] = [
       { name: 'Transaktionen', href: '/transactions', icon: BanknotesIcon },
       { name: 'Meine Finanzen', href: '/finanzen', icon: WalletIcon },
       { name: 'Abos', href: '/subscriptions', icon: CreditCardIcon },
+      { name: 'Regeln', href: '/rules', icon: ClipboardDocumentCheckIcon },
     ],
   },
   {

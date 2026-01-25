@@ -448,6 +448,22 @@ CREATE POLICY "Allow all" ON financial_snapshots FOR ALL USING (true) WITH CHECK
 CREATE POLICY "Allow all" ON yearly_income_records FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
+-- FINANCIAL RULES
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS financial_rules (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  income_rules TEXT,
+  forecast_rules TEXT,
+  briefing TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE financial_rules ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all" ON financial_rules FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================
 -- FINANCIAL SNAPSHOTS
 -- ============================================
 

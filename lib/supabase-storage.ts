@@ -5,6 +5,7 @@ import {
   WeeklyReport,
   Budget,
   ProjectionSettings,
+  FinancialRules,
   IncomeSource,
   FixedCost,
   VariableCostEstimate,
@@ -188,6 +189,92 @@ export async function deleteTransaction(id: string): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+// ============================================
+// FINANCIAL RULES
+// ============================================
+
+export async function getFinancialRules(): Promise<FinancialRules | null> {
+  const { data, error } = await supabase
+    .from('financial_rules')
+    .select('id, income_rules, forecast_rules, briefing, created_at, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching financial rules:', error);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    incomeRules: data.income_rules || '',
+    forecastRules: data.forecast_rules || '',
+    briefing: data.briefing || '',
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+export async function saveFinancialRules(
+  rules: Omit<FinancialRules, 'id'> & { id?: string }
+): Promise<FinancialRules | null> {
+  const payload = {
+    income_rules: rules.incomeRules,
+    forecast_rules: rules.forecastRules,
+    briefing: rules.briefing,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (rules.id) {
+    const { data, error } = await supabase
+      .from('financial_rules')
+      .update(payload)
+      .eq('id', rules.id)
+      .select('id, income_rules, forecast_rules, briefing, created_at, updated_at')
+      .single();
+
+    if (error) {
+      console.error('Error updating financial rules:', error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      incomeRules: data.income_rules || '',
+      forecastRules: data.forecast_rules || '',
+      briefing: data.briefing || '',
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('financial_rules')
+    .insert({
+      ...payload,
+      created_at: new Date().toISOString(),
+    })
+    .select('id, income_rules, forecast_rules, briefing, created_at, updated_at')
+    .single();
+
+  if (error) {
+    console.error('Error creating financial rules:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    incomeRules: data.income_rules || '',
+    forecastRules: data.forecast_rules || '',
+    briefing: data.briefing || '',
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
 // ============================================

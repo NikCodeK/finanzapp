@@ -19,6 +19,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   BeakerIcon,
+  ClipboardDocumentCheckIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
@@ -45,6 +46,7 @@ const allNavItems: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Transaktionen', href: '/transactions', icon: BanknotesIcon },
   { name: 'Meine Finanzen', href: '/finanzen', icon: WalletIcon },
+  { name: 'Regeln', href: '/rules', icon: ClipboardDocumentCheckIcon },
   { name: 'Abos', href: '/subscriptions', icon: CreditCardIcon },
   { name: `Ziele ${currentYear}`, href: `/ziele/${currentYear}`, icon: FlagIcon },
   { name: 'Analyse', href: '/analytics', icon: ChartPieIcon, badge: 'Desktop' },

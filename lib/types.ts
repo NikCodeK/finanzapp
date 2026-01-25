@@ -51,6 +51,15 @@ export interface ProjectionSettings {
   };
 }
 
+export interface FinancialRules {
+  id: string;
+  incomeRules: string;
+  forecastRules: string;
+  briefing: string;
+  updatedAt?: string;
+  createdAt?: string;
+}
+
 export interface MonthlySummary {
   income: number;
   expenses: number;
