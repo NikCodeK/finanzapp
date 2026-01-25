@@ -18,6 +18,7 @@ import {
   CurrencyEuroIcon,
   Bars3Icon,
   XMarkIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
@@ -49,6 +50,7 @@ const allNavItems: NavItem[] = [
   { name: 'Analyse', href: '/analytics', icon: ChartPieIcon, badge: 'Desktop' },
   { name: 'Investments', href: '/investments', icon: CurrencyEuroIcon, badge: 'Desktop' },
   { name: 'Planung', href: '/planning', icon: ShoppingCartIcon, badge: 'Desktop' },
+  { name: 'Simulation', href: '/simulation', icon: BeakerIcon, badge: 'Desktop' },
   { name: 'Wochenberichte', href: '/weekly', icon: CalendarDaysIcon, badge: 'Desktop' },
   { name: 'Monatsübersicht', href: '/monthly', icon: ChartBarIcon, badge: 'Desktop' },
   { name: 'Prognose', href: '/projection', icon: ArrowTrendingUpIcon, badge: 'Desktop' },

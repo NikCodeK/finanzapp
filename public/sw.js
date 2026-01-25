@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finanzapp-v1';
+const CACHE_NAME = 'finanzapp-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache on install
@@ -32,7 +32,23 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - network first, fallback to cache
+const isStaticAsset = (request) => {
+  const destination = request.destination;
+  return destination === 'style' ||
+    destination === 'script' ||
+    destination === 'image' ||
+    destination === 'font';
+};
+
+const isNavigation = (request) => request.mode === 'navigate';
+
+const isSameOrigin = (url) => url.origin === self.location.origin;
+
+const isApiRequest = (url) => {
+  return url.pathname.startsWith('/api') || url.hostname.includes('supabase');
+};
+
+// Fetch event - cache only static assets, network-first for navigations
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
@@ -40,35 +56,50 @@ self.addEventListener('fetch', (event) => {
   // Skip chrome-extension and other non-http requests
   if (!event.request.url.startsWith('http')) return;
 
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Clone the response before caching
-        const responseClone = response.clone();
+  const requestUrl = new URL(event.request.url);
 
-        // Only cache successful responses
-        if (response.status === 200) {
+  if (isNavigation(event.request)) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
           });
-        }
-
-        return response;
-      })
-      .catch(() => {
-        // Network failed, try cache
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-
-          // If it's a navigation request, show offline page
-          if (event.request.mode === 'navigate') {
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
             return caches.match(OFFLINE_URL);
-          }
+          });
+        })
+    );
+    return;
+  }
 
-          return new Response('Offline', { status: 503 });
+  if (!isSameOrigin(requestUrl) || isApiRequest(requestUrl)) {
+    return;
+  }
+
+  if (isStaticAsset(event.request)) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((response) => {
+          if (response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
         });
       })
-  );
+    );
+  }
 });

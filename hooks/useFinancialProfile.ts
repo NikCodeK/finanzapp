@@ -28,6 +28,7 @@ import {
   getAssets,
   saveAssets as saveAssetsDB,
 } from '@/lib/supabase-storage';
+import { calculateHealthScore } from '@/lib/healthScore';
 
 export function useFinancialProfile() {
   const [incomeSources, setIncomeSources] = useState<IncomeSource[]>([]);
@@ -314,25 +315,13 @@ export function useFinancialProfile() {
   }, [availableIncome, monthlyIncome]);
 
   const healthScore = useMemo(() => {
-    let score = 50;
-
-    if (savingsRate >= 0.2) score += 25;
-    else if (savingsRate >= 0.1) score += 15;
-    else if (savingsRate > 0) score += 5;
-    else score -= 10;
-
-    if (debtToIncomeRatio === 0) score += 15;
-    else if (debtToIncomeRatio <= 0.2) score += 10;
-    else if (debtToIncomeRatio <= 0.35) score += 5;
-    else score -= 10;
-
     const monthlyExpenses = monthlyFixedCosts + monthlyVariableCosts;
     const emergencyMonths = monthlyExpenses > 0 ? assets.savings / monthlyExpenses : 0;
-    if (emergencyMonths >= 6) score += 10;
-    else if (emergencyMonths >= 3) score += 5;
-    else score -= 5;
-
-    return Math.min(Math.max(score, 0), 100);
+    return calculateHealthScore({
+      savingsRate,
+      debtToIncomeRatio,
+      emergencyMonths,
+    });
   }, [savingsRate, debtToIncomeRatio, monthlyFixedCosts, monthlyVariableCosts, assets.savings]);
 
   return {

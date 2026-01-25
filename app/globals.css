@@ -20,11 +20,11 @@ body {
 }
 
 .safe-area-bottom-nav {
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: clamp(0px, env(safe-area-inset-bottom, 0px), 16px);
 }
 
 html[data-standalone='true'] .safe-area-bottom-nav {
-  padding-bottom: max(calc(env(safe-area-inset-bottom) - 12px), 0px);
+  padding-bottom: clamp(0px, calc(env(safe-area-inset-bottom) - 12px), 16px);
 }
 
 .safe-area-top {

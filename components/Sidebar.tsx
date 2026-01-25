@@ -18,6 +18,7 @@ import {
   CurrencyEuroIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  BeakerIcon,
 } from '@heroicons/react/24/outline';
 import { classNames } from '@/lib/utils';
 import { useAuth } from './AuthProvider';
@@ -55,6 +56,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: 'Investments', href: '/investments', icon: CurrencyEuroIcon },
       { name: 'Planung', href: '/planning', icon: ShoppingCartIcon },
+      { name: 'Simulation', href: '/simulation', icon: BeakerIcon },
     ],
   },
   {
