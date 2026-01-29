@@ -95,3 +95,68 @@ export function formatPercent(value: number): string {
 export function formatPercentInt(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
+
+// Date grouping types and functions
+export type DateGroup = 'heute' | 'gestern' | 'diese-woche' | 'dieser-monat' | 'aelter';
+
+export function getDateGroup(dateISO: string): DateGroup {
+  const date = parseISO(dateISO);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(today);
+
+  const dateOnly = new Date(date);
+  dateOnly.setHours(0, 0, 0, 0);
+
+  if (dateOnly.getTime() === today.getTime()) {
+    return 'heute';
+  }
+  if (dateOnly.getTime() === yesterday.getTime()) {
+    return 'gestern';
+  }
+  if (dateOnly >= weekStart && dateOnly < today) {
+    return 'diese-woche';
+  }
+  if (dateOnly >= monthStart && dateOnly < weekStart) {
+    return 'dieser-monat';
+  }
+  return 'aelter';
+}
+
+// CSV Export
+import type { Transaction } from './types';
+
+export function exportToCSV(transactions: Transaction[], filename: string): void {
+  const headers = ['Datum', 'Betrag', 'Typ', 'Kategorie', 'Konto', 'Wiederkehrend', 'Notiz'];
+
+  const rows = transactions.map((t) => [
+    formatDate(t.dateISO),
+    t.amount.toFixed(2).replace('.', ','),
+    t.type === 'income' ? 'Einnahme' : 'Ausgabe',
+    t.category,
+    t.account,
+    t.recurring ? 'Ja' : 'Nein',
+    `"${(t.note || '').replace(/"/g, '""')}"`,
+  ]);
+
+  // BOM for Excel UTF-8 compatibility
+  const BOM = '\uFEFF';
+  const csvContent = BOM + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}

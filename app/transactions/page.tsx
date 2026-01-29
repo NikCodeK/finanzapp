@@ -9,8 +9,17 @@ import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import Input from '@/components/ui/Input';
 import { Transaction, EXPENSE_CATEGORIES, INCOME_CATEGORIES, ACCOUNTS } from '@/lib/types';
-import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
-import { formatCurrency } from '@/lib/utils';
+import {
+  PlusIcon,
+  FunnelIcon,
+  ArrowDownTrayIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  TrashIcon,
+  XMarkIcon,
+  Bars3BottomLeftIcon
+} from '@heroicons/react/24/outline';
+import { formatCurrency, exportToCSV, getDateGroup, type DateGroup } from '@/lib/utils';
 
 export default function TransactionsPage() {
   const [mounted, setMounted] = useState(false);
@@ -26,6 +35,20 @@ export default function TransactionsPage() {
   const [filterAccount, setFilterAccount] = useState('all');
   const [filterSearch, setFilterSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
+  // Sorting
+  type SortField = 'dateISO' | 'amount' | 'category';
+  const [sortField, setSortField] = useState<SortField>('dateISO');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Grouping
+  const [showGrouping, setShowGrouping] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -46,8 +69,10 @@ export default function TransactionsPage() {
       category: filterCategory === 'all' ? undefined : filterCategory,
       account: filterAccount === 'all' ? undefined : filterAccount,
       search: debouncedSearch || undefined,
+      startDateISO: filterStartDate || undefined,
+      endDateISO: filterEndDate || undefined,
     };
-  }, [filterType, filterCategory, filterAccount, debouncedSearch]);
+  }, [filterType, filterCategory, filterAccount, debouncedSearch, filterStartDate, filterEndDate]);
 
   const {
     transactions,
@@ -59,7 +84,42 @@ export default function TransactionsPage() {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    deleteTransactionsBulk,
   } = useTransactions({ mode: 'page', filters, pageSize: 50 });
+
+  // Client-side sorting
+  const sortedTransactions = useMemo(() => {
+    const sorted = [...transactions];
+    sorted.sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'dateISO') {
+        comparison = a.dateISO.localeCompare(b.dateISO);
+      } else if (sortField === 'amount') {
+        comparison = a.amount - b.amount;
+      } else if (sortField === 'category') {
+        comparison = a.category.localeCompare(b.category);
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [transactions, sortField, sortDirection]);
+
+  // Grouped transactions
+  const groupedTransactions = useMemo(() => {
+    if (!showGrouping) return null;
+    const groups: Record<DateGroup, Transaction[]> = {
+      'heute': [],
+      'gestern': [],
+      'diese-woche': [],
+      'dieser-monat': [],
+      'aelter': [],
+    };
+    for (const t of sortedTransactions) {
+      const group = getDateGroup(t.dateISO);
+      groups[group].push(t);
+    }
+    return groups;
+  }, [sortedTransactions, showGrouping]);
 
   let totalIncome = 0;
   let totalExpenses = 0;
@@ -97,6 +157,78 @@ export default function TransactionsPage() {
     setFilterCategory('all');
     setFilterAccount('all');
     setFilterSearch('');
+    setFilterStartDate('');
+    setFilterEndDate('');
+  };
+
+  // Quick date filters
+  const setQuickDateFilter = (type: 'today' | 'week' | 'month') => {
+    const today = new Date();
+    const todayISO = today.toISOString().split('T')[0];
+
+    if (type === 'today') {
+      setFilterStartDate(todayISO);
+      setFilterEndDate(todayISO);
+    } else if (type === 'week') {
+      const day = today.getDay();
+      const diff = day === 0 ? 6 : day - 1; // Monday = 0
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - diff);
+      setFilterStartDate(monday.toISOString().split('T')[0]);
+      setFilterEndDate(todayISO);
+    } else if (type === 'month') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      setFilterStartDate(firstDay.toISOString().split('T')[0]);
+      setFilterEndDate(todayISO);
+    }
+  };
+
+  // Sorting handler
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  // Selection handlers
+  const toggleSelection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === sortedTransactions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sortedTransactions.map((t) => t.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Möchten Sie ${selectedIds.size} Transaktionen wirklich löschen?`)) return;
+
+    setIsDeleting(true);
+    const success = await deleteTransactionsBulk(Array.from(selectedIds));
+    if (success) {
+      setSelectedIds(new Set());
+    }
+    setIsDeleting(false);
+  };
+
+  // CSV Export
+  const handleExport = () => {
+    exportToCSV(sortedTransactions, 'transaktionen.csv');
   };
 
   if (!mounted || isLoading) {
@@ -119,6 +251,24 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div className="flex gap-2 sm:gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => setShowGrouping(!showGrouping)}
+            className="flex-1 sm:flex-none"
+            title="Gruppierung"
+          >
+            <Bars3BottomLeftIcon className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Gruppieren</span>
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleExport}
+            className="flex-1 sm:flex-none"
+            title="Als CSV exportieren"
+          >
+            <ArrowDownTrayIcon className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export</span>
+          </Button>
           <Button
             variant="secondary"
             onClick={() => setShowFilters(!showFilters)}
@@ -198,6 +348,43 @@ export default function TransactionsPage() {
               placeholder="Notiz oder Kategorie..."
             />
           </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-4">
+            <Input
+              label="Von"
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+            />
+            <Input
+              label="Bis"
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+            />
+            <div className="col-span-2 flex items-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setQuickDateFilter('today')}
+              >
+                Heute
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setQuickDateFilter('week')}
+              >
+                Diese Woche
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setQuickDateFilter('month')}
+              >
+                Dieser Monat
+              </Button>
+            </div>
+          </div>
           <div className="mt-4 flex justify-end">
             <Button variant="ghost" size="sm" onClick={resetFilters}>
               Filter zurücksetzen
@@ -206,12 +393,45 @@ export default function TransactionsPage() {
         </Card>
       )}
 
+      {/* Bulk Selection Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-4 z-50">
+          <span className="text-sm">
+            {selectedIds.size} ausgewählt
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={isDeleting}
+            className="bg-red-600 hover:bg-red-700 text-white border-0"
+          >
+            <TrashIcon className="h-4 w-4 mr-1" />
+            {isDeleting ? 'Lösche...' : 'Löschen'}
+          </Button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="p-1 hover:bg-slate-700 rounded"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
       {/* Transactions Table */}
       <Card padding="none">
         <TransactionTable
-          transactions={transactions}
+          transactions={sortedTransactions}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          selectedIds={selectedIds}
+          onToggleSelection={toggleSelection}
+          onToggleSelectAll={toggleSelectAll}
+          groupedTransactions={groupedTransactions}
+          showGrouping={showGrouping}
         />
       </Card>
       {hasMore && (

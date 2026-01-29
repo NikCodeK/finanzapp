@@ -8,6 +8,7 @@ import {
   addTransaction as addTransactionDB,
   updateTransaction as updateTransactionDB,
   deleteTransaction as deleteTransactionDB,
+  deleteTransactionsBulk as deleteTransactionsBulkDB,
 } from '@/lib/supabase-storage';
 
 type UseTransactionsOptions = {
@@ -109,7 +110,10 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     const newTransaction = await addTransactionDB(transaction);
     if (newTransaction) {
       if (matchesFilters(newTransaction)) {
-        setTransactions((prev) => [newTransaction, ...prev]);
+        setTransactions((prev) => {
+          const updated = [...prev, newTransaction];
+          return updated.sort((a, b) => b.dateISO.localeCompare(a.dateISO));
+        });
         setTotalCount((prev) => prev + 1);
       }
     }
@@ -123,7 +127,8 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         const exists = prev.some((t) => t.id === updated.id);
         const shouldInclude = matchesFilters(updated);
         if (exists && shouldInclude) {
-          return prev.map((t) => (t.id === updated.id ? updated : t));
+          const result = prev.map((t) => (t.id === updated.id ? updated : t));
+          return result.sort((a, b) => b.dateISO.localeCompare(a.dateISO));
         }
         if (exists && !shouldInclude) {
           setTotalCount((count) => Math.max(0, count - 1));
@@ -131,7 +136,8 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
         }
         if (!exists && shouldInclude) {
           setTotalCount((count) => count + 1);
-          return [updated, ...prev];
+          const result = [...prev, updated];
+          return result.sort((a, b) => b.dateISO.localeCompare(a.dateISO));
         }
         return prev;
       });
@@ -154,6 +160,20 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     return success;
   }, []);
 
+  const deleteTransactionsBulk = useCallback(async (ids: string[]) => {
+    const success = await deleteTransactionsBulkDB(ids);
+    if (success) {
+      setTransactions((prev) => {
+        const idSet = new Set(ids);
+        const filtered = prev.filter((t) => !idSet.has(t.id));
+        const deletedCount = prev.length - filtered.length;
+        setTotalCount((count) => Math.max(0, count - deletedCount));
+        return filtered;
+      });
+    }
+    return success;
+  }, []);
+
   const hasMore = mode === 'page' && transactions.length < totalCount;
 
   return {
@@ -166,6 +186,7 @@ export function useTransactions(options: UseTransactionsOptions = {}) {
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    deleteTransactionsBulk,
     refresh: loadTransactions,
   };
 }

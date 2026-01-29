@@ -191,6 +191,21 @@ export async function deleteTransaction(id: string): Promise<boolean> {
   return true;
 }
 
+export async function deleteTransactionsBulk(ids: string[]): Promise<boolean> {
+  if (ids.length === 0) return true;
+
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .in('id', ids);
+
+  if (error) {
+    console.error('Error bulk deleting transactions:', error);
+    return false;
+  }
+  return true;
+}
+
 // ============================================
 // FINANCIAL RULES
 // ============================================
